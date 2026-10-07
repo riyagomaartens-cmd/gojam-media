@@ -467,6 +467,7 @@ p { margin: 0 0 1em; }
 .pkg-head { margin-bottom: 34px; }
 .pkg-head h2 { font-size: clamp(1.7rem, 4vw, 2.5rem); }
 .pkg-head p { color: var(--muted); margin: 0; max-width: 60ch; }
+.pkg-head .pkg-sub { margin-top: 5px; font-size: 1.05rem; }
 .pkg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: stretch; }
 .pkg-card {
   display: flex; flex-direction: column;
