@@ -499,6 +499,18 @@ p { margin: 0 0 1em; }
 .pkg-list li::before { content: ""; position: absolute; left: 3px; top: 16px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent-grad); }
 .pkg-note { color: var(--muted-2); font-size: 0.9rem; margin: 22px 0 0; }
 
+/* service card with photo (home) */
+.card.has-photo { padding: 0; overflow: hidden; }
+.card.has-photo .card-photo { height: 168px; background-size: cover; background-position: center; }
+.card.has-photo h3 { margin: 20px 26px 8px; }
+.card.has-photo p { margin: 0 26px 26px; color: var(--muted); }
+
+/* category thumbnail (packages) */
+.pkg-head { display: flex; align-items: center; gap: 20px; }
+.pkg-head-text { min-width: 0; }
+.pkg-thumb { flex: none; width: 78px; height: 78px; border-radius: 14px; background-size: cover; background-position: center; border: 1px solid var(--border); }
+@media (max-width: 560px) { .pkg-head { gap: 15px; } .pkg-thumb { width: 58px; height: 58px; } }
+
 .addons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .addon { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 20px; }
 .addon .price { font-family: var(--font-display); font-weight: 400; font-size: 1.3rem; color: var(--accent-1); margin-top: 6px; }
