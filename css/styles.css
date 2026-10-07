@@ -763,9 +763,9 @@ form textarea { resize: vertical; min-height: 130px; }
 .breadcrumb a:hover { color: var(--text); }
 
 /* about hero with photo */
-.about-hero {
+.about-top {
   background-image:
-    linear-gradient(100deg, rgba(10,10,11,0.88) 0%, rgba(10,10,11,0.64) 50%, rgba(10,10,11,0.5) 100%),
+    linear-gradient(rgba(10,10,11,0.72), rgba(10,10,11,0.8)),
     url("../images/photos/brand-pattern.jpg");
   background-size: cover;
   background-position: center;
