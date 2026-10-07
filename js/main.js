@@ -44,6 +44,41 @@
   var y = document.querySelector("[data-year]");
   if (y) y.textContent = new Date().getFullYear();
 
+  // --- YouTube click-to-play facades ---
+  document.querySelectorAll(".yt-facade").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var id = btn.getAttribute("data-id");
+      var iframe = document.createElement("iframe");
+      iframe.setAttribute(
+        "src",
+        "https://www.youtube-nocookie.com/embed/" + id + "?autoplay=1&rel=0"
+      );
+      iframe.setAttribute(
+        "allow",
+        "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      );
+      iframe.setAttribute("allowfullscreen", "");
+      iframe.setAttribute("title", btn.getAttribute("aria-label") || "Video");
+      btn.replaceWith(iframe);
+    });
+  });
+
+  // --- portfolio filtering ---
+  var filterBtns = document.querySelectorAll(".filter-btn");
+  if (filterBtns.length) {
+    filterBtns.forEach(function (fb) {
+      fb.addEventListener("click", function () {
+        var f = fb.getAttribute("data-filter");
+        filterBtns.forEach(function (b) { b.classList.remove("active"); });
+        fb.classList.add("active");
+        document.querySelectorAll(".v-card").forEach(function (card) {
+          var show = f === "all" || card.getAttribute("data-cat") === f;
+          card.classList.toggle("hide", !show);
+        });
+      });
+    });
+  }
+
   // --- contact form friendly handling (no backend) ---
   var form = document.querySelector("form[data-contact]");
   if (form) {

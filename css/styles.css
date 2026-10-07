@@ -138,6 +138,14 @@ p { margin: 0 0 1em; }
   color: #fff;
   box-shadow: 0 4px 16px rgba(247, 38, 94, 0.35);
 }
+/* image logo (white-on-black source; screen blend drops the black) */
+.brand-logo {
+  height: 42px;
+  width: auto;
+  display: block;
+  mix-blend-mode: screen;
+}
+.footer-brand .brand-logo { height: 54px; }
 .nav-links {
   display: flex;
   align-items: center;
@@ -348,6 +356,81 @@ p { margin: 0 0 1em; }
 }
 .work-item .overlay h4 { margin: 4px 0 0; font-size: 1.15rem; }
 .work-item.span-2 { grid-column: span 2; aspect-ratio: auto; }
+
+/* ---------- video portfolio (filters + click-to-play) ---------- */
+.filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 40px; }
+.filter-btn {
+  padding: 9px 18px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--muted); font-size: 0.9rem; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+.filter-btn:hover { color: var(--text); border-color: var(--muted); }
+.filter-btn.active { background: var(--accent-grad); color: #fff; border-color: transparent; }
+
+.video-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.v-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  transition: transform 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+.v-card:hover { transform: translateY(-6px); border-color: #3a3a44; }
+.v-card.hide { display: none; }
+.v-embed { position: relative; aspect-ratio: 16 / 9; background: #000; }
+.yt-facade {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  padding: 0; border: 0; cursor: pointer; background: #000; display: block;
+}
+.yt-facade img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  opacity: 0.86; transition: opacity 0.3s var(--ease), transform 0.5s var(--ease);
+}
+.yt-facade:hover img { opacity: 1; transform: scale(1.04); }
+.yt-facade .play {
+  position: absolute; top: 50%; left: 50%; width: 62px; height: 62px;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  background: var(--accent-grad); display: grid; place-items: center;
+  box-shadow: 0 8px 28px rgba(247, 38, 94, 0.45);
+  transition: transform 0.25s var(--ease);
+}
+.yt-facade:hover .play { transform: translate(-50%, -50%) scale(1.1); }
+.yt-facade .play::after {
+  content: ""; margin-left: 5px;
+  border-style: solid; border-width: 10px 0 10px 17px;
+  border-color: transparent transparent transparent #fff;
+}
+.v-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.v-meta { padding: 18px 20px 22px; }
+.v-meta .cat {
+  font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent-1); font-weight: 600;
+}
+.v-meta h4 { margin: 6px 0 4px; font-size: 1.05rem; line-height: 1.25; }
+.v-meta .client { color: var(--muted); font-size: 0.9rem; margin: 0; }
+.v-views { color: var(--muted-2); font-size: 0.82rem; margin: 8px 0 0; display: flex; align-items: center; gap: 6px; }
+
+@media (max-width: 920px) { .video-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .video-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Instagram callout bar ---------- */
+.ig-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 28px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 32px 36px;
+  position: relative; overflow: hidden;
+}
+.ig-bar::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: linear-gradient(180deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5);
+}
+.ig-bar h3 { font-size: 1.5rem; margin: 0 0 6px; }
+.ig-bar p { color: var(--muted); margin: 0; }
+.ig-bar .btn { flex: none; }
+@media (max-width: 700px) {
+  .ig-bar { flex-direction: column; align-items: flex-start; gap: 20px; padding: 28px 24px; }
+  .ig-bar .btn { width: 100%; justify-content: center; }
+}
 
 /* ---------- about / split ---------- */
 .split {
@@ -625,6 +708,7 @@ form textarea { resize: vertical; min-height: 130px; }
   .nav-links a { display: block; padding: 10px 0; font-size: 1.05rem; }
   .nav-cta { margin: 10px 0 0; }
   .nav-cta .btn { width: 100%; justify-content: center; }
+  .brand-logo { height: 34px; }
 
   .grid-3, .grid-2, .work-grid { grid-template-columns: 1fr; }
   .work-item.span-2 { grid-column: span 1; }

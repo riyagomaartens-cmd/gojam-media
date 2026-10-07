@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Work — Go Jam Media</title>
-  <meta name="description" content="Selected films, podcasts, and social content produced by Go Jam Media." />
+  <meta name="description" content="Music videos, branded films, documentaries and podcasts produced by Go Jam Media — 37 productions with 625,000+ combined views." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
@@ -14,7 +14,7 @@
 
   <header class="site-header">
     <div class="container nav">
-      <a class="brand" href="index.html"><span class="logo-mark">GJ</span> Go Jam Media</a>
+      <a class="brand" href="index.html" aria-label="Go Jam Media home"><img src="images/logo.png" alt="Go Jam Media" class="brand-logo" /></a>
       <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
       <ul class="nav-links">
         <li><a href="index.html">Home</a></li>
@@ -30,21 +30,224 @@
     <div class="container">
       <div class="breadcrumb reveal"><a href="index.html">Home</a> / Work</div>
       <h1 class="reveal">Selected work.</h1>
-      <p class="reveal">A sampling of recent projects across film, podcasts, and social. Swap these out with your own as the reel grows.</p>
+      <p class="reveal">Music videos, branded films, documentaries and podcasts — 38 productions with <strong>650,000+ combined views</strong>. Here's the reel, led by our biggest hits. Click any thumbnail to play.</p>
     </div>
   </section>
 
   <section class="section">
     <div class="container">
-      <div class="work-grid">
-        <div class="work-item span-2 reveal" style="aspect-ratio:16/9"><div class="thumb ph-1"></div><div class="overlay"><span class="cat">Brand Film</span><h4>Aurora Coffee — Origins</h4></div></div>
-        <div class="work-item reveal"><div class="thumb ph-2"></div><div class="overlay"><span class="cat">Podcast</span><h4>The Build Lab</h4></div></div>
-        <div class="work-item reveal"><div class="thumb ph-3"></div><div class="overlay"><span class="cat">Social Series</span><h4>Nova Fitness Reels</h4></div></div>
-        <div class="work-item reveal"><div class="thumb ph-4"></div><div class="overlay"><span class="cat">Commercial</span><h4>Harbor Outfitters — Spring</h4></div></div>
-        <div class="work-item span-2 reveal" style="aspect-ratio:16/9"><div class="thumb ph-5"></div><div class="overlay"><span class="cat">Documentary</span><h4>Makers of Milltown</h4></div></div>
-        <div class="work-item reveal"><div class="thumb ph-6"></div><div class="overlay"><span class="cat">Event Film</span><h4>Summit '26 Recap</h4></div></div>
-        <div class="work-item reveal"><div class="thumb ph-1"></div><div class="overlay"><span class="cat">Product</span><h4>Loop Audio Launch</h4></div></div>
-        <div class="work-item reveal"><div class="thumb ph-3"></div><div class="overlay"><span class="cat">Social</span><h4>Verde Kitchen Shorts</h4></div></div>
+      <div class="filters reveal">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="music">Music Videos</button>
+        <button class="filter-btn" data-filter="branded">Branded &amp; Events</button>
+        <button class="filter-btn" data-filter="docs">Docs &amp; Podcasts</button>
+      </div>
+
+      <div class="video-grid">
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="IOhc_ifv4yc" aria-label="Play: Gamble ft Luda G"><img src="https://i.ytimg.com/vi/IOhc_ifv4yc/hqdefault.jpg" alt="Gamble ft Luda G" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Gamble (ft. Luda&nbsp;G)</h4><p class="client">TembiPowers</p><p class="v-views">▶ 170K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="-hHR4DKm7Jg" aria-label="Play: 16 Bars"><img src="https://i.ytimg.com/vi/-hHR4DKm7Jg/hqdefault.jpg" alt="16 Bars" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>16 Bars (ft. Wally&nbsp;G, Mastamind &amp; Mad&nbsp;Max)</h4><p class="client">Luda G</p><p class="v-views">▶ 163K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="kvtaFDU9Mik" aria-label="Play: Nagani"><img src="https://i.ytimg.com/vi/kvtaFDU9Mik/hqdefault.jpg" alt="Nagani" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Nagani</h4><p class="client">Certifiedkidz</p><p class="v-views">▶ 110K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="branded">
+          <div class="v-embed"><button class="yt-facade" data-id="-ha7-vlokcY" aria-label="Play: R5000 Overnight in an Empty Mall"><img src="https://i.ytimg.com/vi/-ha7-vlokcY/hqdefault.jpg" alt="R5000 Overnight in an Empty Mall" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Full Production</span><h4>We Competed for R5000 Overnight in an Empty Mall</h4><p class="client">Beezlo Boys · full production</p><p class="v-views">▶ 50K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="NUO2k2-tebY" aria-label="Play: Bounce"><img src="https://i.ytimg.com/vi/NUO2k2-tebY/hqdefault.jpg" alt="Bounce" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Bounce (ft. 21&nbsp;Promo, Pengii &amp; Ozxy)</h4><p class="client">Nexus_za</p><p class="v-views">▶ 48K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="IPIBznXGRe8" aria-label="Play: NI BETO Le Remix Des Remix"><img src="https://i.ytimg.com/vi/IPIBznXGRe8/hqdefault.jpg" alt="NI BETO Le Remix Des Remix" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>NI BÉTO (Le Remix Des Remix)</h4><p class="client">NGT Worldwide · ft. Nexus, Riyago, Esny &amp; Michael Bars</p><p class="v-views">▶ 28K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="branded">
+          <div class="v-embed"><button class="yt-facade" data-id="2bCBDx6cxcQ" aria-label="Play: Influencer Charity Match 2025"><img src="https://i.ytimg.com/vi/2bCBDx6cxcQ/hqdefault.jpg" alt="Influencer Charity Match 2025" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Event Film</span><h4>Influencer Charity Match 2025 — Highlights</h4><p class="client">Og Moose · event filming</p><p class="v-views">▶ 21K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="PwatZvUVOfU" aria-label="Play: MVP"><img src="https://i.ytimg.com/vi/PwatZvUVOfU/hqdefault.jpg" alt="MVP" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>MVP</h4><p class="client">Michael Bars</p><p class="v-views">▶ 9.1K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="zDqfM3VeqR8" aria-label="Play: Cape Town Anthem"><img src="https://i.ytimg.com/vi/zDqfM3VeqR8/hqdefault.jpg" alt="Cape Town Anthem" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Cape Town Anthem (feat. STORM)</h4><p class="client">NGT Worldwide</p><p class="v-views">▶ 9K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="URLItpKj9yQ" aria-label="Play: Pretty Lady"><img src="https://i.ytimg.com/vi/URLItpKj9yQ/hqdefault.jpg" alt="Pretty Lady" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Pretty Lady</h4><p class="client">Young OG CPT × Nexus_za</p><p class="v-views">▶ 7K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="i8lbjYmOOUs" aria-label="Play: Arctic Blitz"><img src="https://i.ytimg.com/vi/i8lbjYmOOUs/hqdefault.jpg" alt="Arctic Blitz" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Arctic Blitz</h4><p class="client">ADEK</p><p class="v-views">▶ 6.2K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="xmQ6qI4EunY" aria-label="Play: Emotionless"><img src="https://i.ytimg.com/vi/xmQ6qI4EunY/hqdefault.jpg" alt="Emotionless" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Emotionless</h4><p class="client">Michael Bars</p><p class="v-views">▶ 4.4K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="XYXnzleX67s" aria-label="Play: Red Eyed Devil"><img src="https://i.ytimg.com/vi/XYXnzleX67s/hqdefault.jpg" alt="Red Eyed Devil" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Red Eyed Devil</h4><p class="client">Michael Bars</p><p class="v-views">▶ 4.2K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="lFDljcc1bFA" aria-label="Play: Just Friends"><img src="https://i.ytimg.com/vi/lFDljcc1bFA/hqdefault.jpg" alt="Just Friends" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Just Friends</h4><p class="client">Nexus_za</p><p class="v-views">▶ 4K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="i7qyKPgXEJw" aria-label="Play: F.B.N"><img src="https://i.ytimg.com/vi/i7qyKPgXEJw/hqdefault.jpg" alt="F.B.N" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>F.B.N</h4><p class="client">Michael Bars</p><p class="v-views">▶ 3K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="RHXl-2KcKNg" aria-label="Play: Bord Na Nga"><img src="https://i.ytimg.com/vi/RHXl-2KcKNg/hqdefault.jpg" alt="Bord Na Nga" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Bord Na Nga</h4><p class="client">El Nega &amp; Esny Bringos</p><p class="v-views">▶ 2.8K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="bXdUbX-qi_0" aria-label="Play: Think About Me"><img src="https://i.ytimg.com/vi/bXdUbX-qi_0/hqdefault.jpg" alt="Think About Me" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Think About Me (ft. Soulful&nbsp;Clay)</h4><p class="client">TembiPowers</p><p class="v-views">▶ 2.2K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="M5pXJde5dW4" aria-label="Play: Dyin Fruit"><img src="https://i.ytimg.com/vi/M5pXJde5dW4/hqdefault.jpg" alt="Dyin Fruit" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Dyin' Fruit (ft. Nnotice)</h4><p class="client">TurfGawd · NGT Worldwide</p><p class="v-views">▶ 1.8K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="Szq4AS-LZW0" aria-label="Play: Project X"><img src="https://i.ytimg.com/vi/Szq4AS-LZW0/hqdefault.jpg" alt="Project X" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Project X (feat. Nexus)</h4><p class="client">ADEK</p><p class="v-views">▶ 1.7K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="kchPzmdT1uI" aria-label="Play: Summers Over Freestyle"><img src="https://i.ytimg.com/vi/kchPzmdT1uI/hqdefault.jpg" alt="Summers Over Freestyle" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Summers Over (Freestyle)</h4><p class="client">TembiPowers</p><p class="v-views">▶ 1.5K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="MhaA5uNMfgY" aria-label="Play: In My Head"><img src="https://i.ytimg.com/vi/MhaA5uNMfgY/hqdefault.jpg" alt="In My Head" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>In My Head</h4><p class="client">Sanah Healey</p><p class="v-views">▶ 1.3K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="N_v_vWCKvgw" aria-label="Play: Shouldn't Have Answered That Call"><img src="https://i.ytimg.com/vi/N_v_vWCKvgw/hqdefault.jpg" alt="Shouldn't Have Answered That Call" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Short</span><h4>Shouldn't Have Answered That Call</h4><p class="client">Anica Kiana</p><p class="v-views">▶ 1.2K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="docs">
+          <div class="v-embed"><button class="yt-facade" data-id="Yy7tjez7MfU" aria-label="Play: Power Tripping Episode 3"><img src="https://i.ytimg.com/vi/Yy7tjez7MfU/hqdefault.jpg" alt="Power Tripping Episode 3" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Podcast</span><h4>Power Tripping Ep. 3 — BAKERGOTTHEKEYS</h4><p class="client">Only Dope Records</p><p class="v-views">▶ 1.1K views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="fZd86soTYEI" aria-label="Play: Broken Home"><img src="https://i.ytimg.com/vi/fZd86soTYEI/hqdefault.jpg" alt="Broken Home" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Broken Home</h4><p class="client">AXELVERSE</p><p class="v-views">▶ 949 views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="jScgY8BBkC4" aria-label="Play: CRSH CRS"><img src="https://i.ytimg.com/vi/jScgY8BBkC4/hqdefault.jpg" alt="CRSH CRS" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>CRSH CRS (ft. xoxavier)</h4><p class="client">Nexus_za</p><p class="v-views">▶ 983 views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="docs">
+          <div class="v-embed"><button class="yt-facade" data-id="B6QdAr70PG0" aria-label="Play: Only Dope Records Bootcamp Day 1"><img src="https://i.ytimg.com/vi/B6QdAr70PG0/hqdefault.jpg" alt="Only Dope Records Bootcamp Day 1" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Documentary</span><h4>Only Dope Records Bootcamp — Day 1</h4><p class="client">Only Dope Records</p><p class="v-views">▶ 617 views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="WEAweVsVLmo" aria-label="Play: Dream Chaser Anthem"><img src="https://i.ytimg.com/vi/WEAweVsVLmo/hqdefault.jpg" alt="Dream Chaser Anthem" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Dream Chaser Anthem: The Conversion</h4><p class="client">Patrick VDV</p><p class="v-views">▶ 594 views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="U8r52did_cU" aria-label="Play: Morning to Night"><img src="https://i.ytimg.com/vi/U8r52did_cU/hqdefault.jpg" alt="Morning to Night" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Morning to Night (ft. Miss&nbsp;Lia)</h4><p class="client">EBOII</p><p class="v-views">▶ 487 views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="HRQmo1LEmi0" aria-label="Play: Nexus Intro"><img src="https://i.ytimg.com/vi/HRQmo1LEmi0/hqdefault.jpg" alt="Nexus Intro" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Intro</h4><p class="client">Nexus_za</p><p class="v-views">▶ 479 views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="docs">
+          <div class="v-embed"><button class="yt-facade" data-id="bU-kdGIcxRQ" aria-label="Play: How This Man Saves the Homeless"><img src="https://i.ytimg.com/vi/bU-kdGIcxRQ/hqdefault.jpg" alt="How This Man Saves the Homeless" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Documentary</span><h4>How This Man Saves the Homeless</h4><p class="client">Enrique Hermanus · community feature</p><p class="v-views">▶ 450 views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="Cwuqllvf630" aria-label="Play: Dreamin EP clip"><img src="https://i.ytimg.com/vi/Cwuqllvf630/hqdefault.jpg" alt="Dreamin EP clip" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Short</span><h4>Dreamin' — EP Clip</h4><p class="client">Anica Kiana</p><p class="v-views">▶ 320 views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="docs">
+          <div class="v-embed"><button class="yt-facade" data-id="7o8UGNlXJ9Q" aria-label="Play: Power Tripping Episode 4"><img src="https://i.ytimg.com/vi/7o8UGNlXJ9Q/hqdefault.jpg" alt="Power Tripping Episode 4" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Podcast</span><h4>Power Tripping Ep. 4 — LD BEATS</h4><p class="client">Only Dope Records</p><p class="v-views">▶ 239 views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="docs">
+          <div class="v-embed"><button class="yt-facade" data-id="fuOk2plGFS0" aria-label="Play: Power Tripping Episode 2"><img src="https://i.ytimg.com/vi/fuOk2plGFS0/hqdefault.jpg" alt="Power Tripping Episode 2" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Podcast</span><h4>Power Tripping Ep. 2 — Zino D</h4><p class="client">Only Dope Records</p><p class="v-views">▶ 234 views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="docs">
+          <div class="v-embed"><button class="yt-facade" data-id="ldsbsjtlUp0" aria-label="Play: Power Tripping Episode 5"><img src="https://i.ytimg.com/vi/ldsbsjtlUp0/hqdefault.jpg" alt="Power Tripping Episode 5" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Podcast</span><h4>Power Tripping Ep. 5 — Luke Goliath</h4><p class="client">Only Dope Records</p><p class="v-views">▶ 213 views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="VcW0ocJy6Ww" aria-label="Play: Two Feet - Ella"><img src="https://i.ytimg.com/vi/VcW0ocJy6Ww/hqdefault.jpg" alt="Two Feet - Ella" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Music Video</span><h4>Two Feet — Ella (Director's Cut)</h4><p class="client">Patrick VDV</p><p class="v-views">▶ 198 views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="docs">
+          <div class="v-embed"><button class="yt-facade" data-id="A0B68EnSkng" aria-label="Play: Power Tripping Episode 1"><img src="https://i.ytimg.com/vi/A0B68EnSkng/hqdefault.jpg" alt="Power Tripping Episode 1" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Podcast</span><h4>Power Tripping Ep. 1 — Soulful Clay</h4><p class="client">Only Dope Records</p><p class="v-views">▶ 181 views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="music">
+          <div class="v-embed"><button class="yt-facade" data-id="MYs3o_UN8Ts" aria-label="Play: Jaxx Ramoan Mixtape Trailer"><img src="https://i.ytimg.com/vi/MYs3o_UN8Ts/hqdefault.jpg" alt="Jaxx Ramoan Mixtape Trailer" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Trailer</span><h4>Jaxx Ramoan — Mixtape Trailer</h4><p class="client">Nexus_za</p><p class="v-views">▶ 129 views</p></div>
+        </article>
+
+        <article class="v-card reveal" data-cat="branded">
+          <div class="v-embed"><button class="yt-facade" data-id="kRtWu9QlgJA" aria-label="Play: Jamie Lee and Wesly Wedding Film"><img src="https://i.ytimg.com/vi/kRtWu9QlgJA/hqdefault.jpg" alt="Jamie Lee and Wesly Wedding Film" loading="lazy" /><span class="play"></span></button></div>
+          <div class="v-meta"><span class="cat">Wedding Film</span><h4>Jamie Lee &amp; Wesly — Official Wedding Film</h4><p class="client">Private commission · 2023</p></div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="section-tight">
+    <div class="container">
+      <div class="ig-bar reveal">
+        <div>
+          <p class="eyebrow">On Instagram</p>
+          <h3>We post every project to @gojammedia</h3>
+          <p>Reels, shoots and behind-the-scenes from across our work — all in one feed, updated constantly.</p>
+        </div>
+        <a href="https://www.instagram.com/gojammedia/" target="_blank" rel="noopener" class="btn btn-primary">Follow @gojammedia →</a>
       </div>
     </div>
   </section>
@@ -52,8 +255,8 @@
   <section class="section bg-alt">
     <div class="container">
       <div class="cta-band reveal">
-        <h2>Imagine your project here.</h2>
-        <p>These could be your films, your clips, your story. Let's make something worth showing off.</p>
+        <h2>Want work that pulls these numbers?</h2>
+        <p>From a single music video to full production, let's make something your audience can't scroll past.</p>
         <div style="margin-top:28px"><a href="contact.html" class="btn btn-primary">Start a project →</a></div>
       </div>
     </div>
@@ -63,16 +266,16 @@
     <div class="container">
       <div class="footer-top">
         <div class="footer-brand">
-          <a class="brand" href="index.html"><span class="logo-mark">GJ</span> Go Jam Media</a>
+          <a class="brand" href="index.html" aria-label="Go Jam Media home"><img src="images/logo.png" alt="Go Jam Media" class="brand-logo" /></a>
           <p>A content and video production studio making media that moves people.</p>
         </div>
         <div class="footer-col"><h5>Studio</h5><ul><li><a href="about.html">About</a></li><li><a href="services.html">Services</a></li><li><a href="work.html">Work</a></li></ul></div>
         <div class="footer-col"><h5>Connect</h5><ul><li><a href="contact.html">Contact</a></li><li><a href="mailto:hello@gojammedia.com">hello@gojammedia.com</a></li></ul></div>
-        <div class="footer-col"><h5>Follow</h5><ul><li><a href="#">Instagram</a></li><li><a href="#">YouTube</a></li><li><a href="#">LinkedIn</a></li></ul></div>
+        <div class="footer-col"><h5>Follow</h5><ul><li><a href="https://www.instagram.com/gojammedia/" target="_blank" rel="noopener">Instagram</a></li><li><a href="https://www.youtube.com/@gojammedia" target="_blank" rel="noopener">YouTube</a></li><li><a href="https://www.facebook.com/Gojammedia/" target="_blank" rel="noopener">Facebook</a></li></ul></div>
       </div>
       <div class="footer-bottom">
         <span>© <span data-year>2026</span> Go Jam Media. All rights reserved.</span>
-        <div class="social"><a href="#" aria-label="Instagram">◎</a><a href="#" aria-label="YouTube">▷</a><a href="#" aria-label="LinkedIn">in</a></div>
+        <div class="social"><a href="https://www.instagram.com/gojammedia/" target="_blank" rel="noopener" aria-label="Instagram">◎</a><a href="https://www.youtube.com/@gojammedia" target="_blank" rel="noopener" aria-label="YouTube">▷</a><a href="https://www.facebook.com/Gojammedia/" target="_blank" rel="noopener" aria-label="Facebook">f</a></div>
       </div>
     </div>
   </footer>
