@@ -61,43 +61,19 @@
           </div>
         </div>
 
-        <!-- To receive messages by email, create a free form at https://formspree.io
-             and replace action="#" with action="https://formspree.io/f/YOUR_ID" -->
-        <form data-contact action="#" method="POST" class="reveal">
-          <div class="field">
-            <label for="name">Name</label>
-            <input type="text" id="name" name="name" placeholder="Jane Doe" required />
-          </div>
-          <div class="form-row">
-            <div class="field">
-              <label for="email">Email</label>
-              <input type="email" id="email" name="email" placeholder="jane@company.com" required />
-            </div>
-            <div class="field">
-              <label for="company">Company</label>
-              <input type="text" id="company" name="company" placeholder="Company name" />
-            </div>
-          </div>
-          <div class="field">
-            <label for="service">What do you need?</label>
-            <select id="service" name="service">
-              <option>Video & Film</option>
-              <option>Podcast Production</option>
-              <option>Social Content</option>
-              <option>Motion & Post-Production</option>
-              <option>Photography</option>
-              <option>Creative Strategy</option>
-              <option>Not sure yet</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="message">Tell us about your project</label>
-            <textarea id="message" name="message" placeholder="What are you making, what's the goal, and what's your timeline?" required></textarea>
-          </div>
-          <button type="submit" class="btn btn-primary">Send message →</button>
-          <p class="form-status" style="margin-top:16px"></p>
-          <p class="form-note">By sending this you agree to be contacted about your inquiry.</p>
-        </form>
+        <!-- Jotform embedded contact form -->
+        <div class="reveal jotform-wrap">
+          <iframe
+            id="JotFormIFrame-262263064974058"
+            title="Contact Go Jam Media"
+            allow="geolocation; microphone; camera; fullscreen; payment"
+            allowtransparency="true"
+            src="https://form.jotform.com/262263064974058"
+            frameborder="0"
+            scrolling="no"
+            style="min-width:100%;max-width:100%;width:100%;height:720px;border:none;border-radius:var(--radius);">
+          </iframe>
+        </div>
 
       </div>
     </div>
@@ -122,5 +98,7 @@
   </footer>
 
   <script src="js/main.js"></script>
+  <script src="https://cdn.jotfor.ms/s/umd/latest/for-form-embed-handler.js"></script>
+  <script>window.jotformEmbedHandler("iframe[id='JotFormIFrame-262263064974058']", "https://form.jotform.com")</script>
 </body>
 </html>
