@@ -470,6 +470,9 @@ p { margin: 0 0 1em; }
 .pkg-head .pkg-sub { margin-top: 5px; font-size: 1.05rem; }
 .pkg-flag { display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #1a1206; background: var(--accent-grad); padding: 4px 12px; border-radius: 999px; margin-bottom: 10px; }
 .ig-bar.flagship::before { background: linear-gradient(180deg, #f0b544, #d97b2b); }
+.flagship-left { display: flex; align-items: center; gap: 24px; }
+.flagship-photo { flex: none; width: 140px; height: 140px; border-radius: var(--radius-sm); background-size: cover; background-position: center 66%; border: 1px solid var(--border); }
+@media (max-width: 700px) { .flagship-left { flex-direction: column; align-items: flex-start; gap: 16px; } .flagship-photo { width: 100%; height: 180px; } }
 .pkg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: stretch; }
 .pkg-card {
   display: flex; flex-direction: column;
