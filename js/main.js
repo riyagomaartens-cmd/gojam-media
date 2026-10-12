@@ -123,6 +123,57 @@ var GOJAM_TESTIMONIALS = [
     });
   }
 
+  // --- animated stat counters ---
+  var reduceMotion = window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var nums = document.querySelectorAll(".stat .num");
+  if (nums.length) {
+    var parseNum = function (txt) {
+      var m = String(txt).trim().match(/^(\D*)([\d,]*\.?\d+)(.*)$/);
+      if (!m) return null;
+      var raw = m[2].replace(/,/g, "");
+      return {
+        prefix: m[1],
+        value: parseFloat(raw),
+        decimals: (raw.split(".")[1] || "").length,
+        suffix: m[3]
+      };
+    };
+    var fmt = function (v, d) {
+      return d ? v.toFixed(d) : Math.round(v).toLocaleString();
+    };
+    var countUp = function (el) {
+      var p = parseNum(el.getAttribute("data-count"));
+      if (!p) return;
+      var dur = 1400, start = null;
+      var tick = function (ts) {
+        if (start === null) start = ts;
+        var t = Math.min((ts - start) / dur, 1);
+        var eased = 1 - Math.pow(1 - t, 3);
+        el.textContent = p.prefix + fmt(p.value * eased, p.decimals) + p.suffix;
+        if (t < 1) requestAnimationFrame(tick);
+        else el.textContent = p.prefix + fmt(p.value, p.decimals) + p.suffix;
+      };
+      requestAnimationFrame(tick);
+    };
+    nums.forEach(function (n) { n.setAttribute("data-count", n.textContent.trim()); });
+    if (!reduceMotion && "IntersectionObserver" in window) {
+      nums.forEach(function (n) {
+        var p = parseNum(n.getAttribute("data-count"));
+        if (p) n.textContent = p.prefix + fmt(0, p.decimals) + p.suffix;
+      });
+      var nio = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            countUp(entry.target);
+            nio.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.5 });
+      nums.forEach(function (n) { nio.observe(n); });
+    }
+  }
+
   // --- portfolio filtering ---
   var filterBtns = document.querySelectorAll(".filter-btn");
   if (filterBtns.length) {

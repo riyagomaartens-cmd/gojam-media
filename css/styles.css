@@ -395,13 +395,20 @@ p { margin: 0 0 1em; }
 }
 
 /* ---------- hero with photo ---------- */
-.hero--photo {
+.hero--photo .hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   background-image:
     linear-gradient(90deg, rgba(10,10,11,0.96) 0%, rgba(10,10,11,0.8) 46%, rgba(10,10,11,0.42) 100%),
     url("../images/photos/hero-moto.jpg");
   background-size: cover;
   background-position: center 35%;
+  transform: scale(1.08);
+  animation: heroKenburns 16s var(--ease) forwards;
+  will-change: transform;
 }
+@keyframes heroKenburns { to { transform: scale(1); } }
 .hero--photo::before, .hero--photo::after { opacity: 0.4; }
 
 /* ---------- media photo blocks ---------- */
@@ -670,6 +677,44 @@ p { margin: 0 0 1em; }
 }
 .reveal.in { opacity: 1; transform: none; }
 
+/* ---------- motion / dynamics ---------- */
+
+/* Cinematic hero intro (home) — plays once on load */
+@keyframes heroRise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes heroFocus { from { opacity: 0; transform: translateY(24px); filter: blur(16px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes goldGlint { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.4); } }
+
+.hero--photo .hero-eyebrow,
+.hero--photo .hero-sub,
+.hero--photo .hero-actions > * {
+  opacity: 0;
+  animation: heroRise 0.7s var(--ease) forwards;
+}
+.hero--photo h1 {
+  opacity: 0;
+  animation: heroFocus 0.9s var(--ease) 0.28s forwards;
+}
+.hero--photo .hero-eyebrow { animation-delay: 0.12s; }
+.hero--photo .hero-sub { animation-delay: 0.52s; }
+.hero--photo .hero-actions > *:nth-child(1) { animation-delay: 0.66s; }
+.hero--photo .hero-actions > *:nth-child(2) { animation-delay: 0.76s; }
+.hero--photo .hero-actions > *:nth-child(3) { animation-delay: 0.86s; }
+.hero--photo h1 .accent-text { animation: goldGlint 1.1s ease-in-out 1s 1 both; }
+
+/* Staggered scroll reveals inside grids */
+.grid > .reveal:nth-child(2) { transition-delay: 0.07s; }
+.grid > .reveal:nth-child(3) { transition-delay: 0.14s; }
+.grid > .reveal:nth-child(4) { transition-delay: 0.21s; }
+.grid > .reveal:nth-child(5) { transition-delay: 0.28s; }
+.grid > .reveal:nth-child(6) { transition-delay: 0.35s; }
+.steps > .reveal:nth-child(2) { transition-delay: 0.08s; }
+.steps > .reveal:nth-child(3) { transition-delay: 0.16s; }
+.steps > .reveal:nth-child(4) { transition-delay: 0.24s; }
+
+/* Card image zoom on hover (GPU transform only) */
+.card.has-photo .card-photo { transition: transform 0.5s var(--ease); }
+.card.has-photo:hover .card-photo { transform: scale(1.06); }
+
 /* ---------- responsive ---------- */
 @media (max-width: 920px) {
   .split, .contact-grid { grid-template-columns: 1fr; gap: 40px; }
@@ -868,4 +913,21 @@ a.card { text-decoration: none; color: inherit; }
   }
   /* don't stack a third sticky bar on the services page */
   .svc-jump { position: static; top: auto; }
+}
+
+/* ---------- respect reduced-motion preferences ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .hero--photo .hero-eyebrow,
+  .hero--photo h1,
+  .hero--photo .hero-sub,
+  .hero--photo .hero-actions > * { opacity: 1 !important; filter: none !important; transform: none !important; }
+  .hero--photo .hero-bg { transform: none !important; }
+  .reveal { opacity: 1 !important; transform: none !important; }
 }
