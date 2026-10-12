@@ -42,7 +42,7 @@
         <li><a href="about.html">About</a></li>
         <li><a href="services.html">Services</a></li>
         <li><a href="work.html">Work</a></li>
-        <li class="nav-cta"><a href="contact.html" class="btn btn-primary">Start a project</a></li>
+        <li class="nav-cta"><a href="contact.html#enquire" class="btn btn-primary">Start a project</a></li>
       </ul>
     </div>
   </header>
@@ -57,7 +57,7 @@
         direction with bold aesthetics, strategic thinking and content that converts.
       </p>
       <div class="hero-actions">
-        <a href="contact.html" class="btn btn-primary">Start a project</a>
+        <a href="contact.html#enquire" class="btn btn-primary">Start a project</a>
         <a href="work.html" class="btn btn-ghost">See our work</a>
       </div>
     </div>
@@ -101,36 +101,36 @@
         <p>One team for strategy, shooting, and post. No handoffs, no lost ideas. Just a crew that carries your story the whole way.</p>
       </div>
       <div class="grid grid-3">
-        <div class="card has-photo reveal">
+        <a class="card has-photo reveal" href="services.html#retainers">
           <div class="card-photo" style="background-image:url('images/photos/retainers-home.jpg');background-position:center 30%"></div>
           <h3>Monthly Retainers</h3>
           <p>Our flagship: always-on monthly content (reels, photos and ads) that keeps your brand relevant and seen.</p>
-        </div>
-        <div class="card has-photo reveal">
+        </a>
+        <a class="card has-photo reveal" href="services.html#music-videos">
           <div class="card-photo" style="background-image:url('images/photos/music-videos.jpg')"></div>
           <h3>Music Videos</h3>
           <p>Cinematic music videos for artists, from concept to final cut, with drone and multi-location options.</p>
-        </div>
-        <div class="card has-photo reveal">
+        </a>
+        <a class="card has-photo reveal" href="services.html#social-reels">
           <div class="card-photo" style="background-image:url('images/photos/live-performance.jpg')"></div>
           <h3>Social Reels</h3>
           <p>Scroll-stopping short-form built natively for Instagram and TikTok.</p>
-        </div>
-        <div class="card has-photo reveal">
+        </a>
+        <a class="card has-photo reveal" href="services.html#brand-videos">
           <div class="card-photo" style="background-image:url('images/photos/commercial.jpg')"></div>
           <h3>Brand Videos</h3>
           <p>Brand storytelling with bold aesthetics and strategy that converts.</p>
-        </div>
-        <div class="card has-photo reveal">
+        </a>
+        <a class="card has-photo reveal" href="services.html#weddings">
           <div class="card-photo" style="background-image:url('images/photos/wedding.jpg')"></div>
           <h3>Events &amp; Weddings</h3>
           <p>Highlight films and full multi-camera coverage, from live shows to the big day.</p>
-        </div>
-        <div class="card has-photo reveal">
+        </a>
+        <a class="card has-photo reveal" href="services.html#interviews-podcasts">
           <div class="card-photo" style="background-image:url('images/photos/podcast.jpg')"></div>
           <h3>Podcasts &amp; Interviews</h3>
           <p>Multi-camera studio setups with professional lighting and editing.</p>
-        </div>
+        </a>
       </div>
       <div style="margin-top:36px">
         <a href="services.html" class="btn btn-ghost">View packages &amp; pricing</a>
@@ -181,6 +181,14 @@
     </div>
   </section>
 
+  <!-- ===== TESTIMONIALS (stays hidden until GOJAM_TESTIMONIALS in js/main.js has entries) ===== -->
+  <section class="section bg-alt testimonials" data-testimonials hidden>
+    <div class="container">
+      <div class="section-head reveal"><p class="eyebrow">Testimonials</p><h2>What clients say</h2></div>
+      <div class="testi-grid"></div>
+    </div>
+  </section>
+
   <!-- ===== CTA ===== -->
   <section class="section">
     <div class="container">
@@ -188,7 +196,7 @@
         <h2>Ready to... <span class="accent-text">Go Jam?</span></h2>
         <p>Got a release, a launch or a brand that deserves to be seen? Let's turn it into content people can't scroll past.</p>
         <div style="margin-top:28px">
-          <a href="contact.html" class="btn btn-primary">Start a project</a>
+          <a href="contact.html#enquire" class="btn btn-primary">Start a project</a>
         </div>
       </div>
     </div>
@@ -236,6 +244,30 @@
       </div>
     </div>
   </footer>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ProfessionalService",
+    "name": "Go Jam Media",
+    "url": "https://gojam.co.za/",
+    "image": "https://gojam.co.za/og-image.jpg",
+    "telephone": "+27605689717",
+    "email": "riyago@ipicmedia.co.za",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Cape Town",
+      "addressRegion": "Western Cape",
+      "addressCountry": "ZA"
+    },
+    "areaServed": "Cape Town",
+    "sameAs": [
+      "https://www.instagram.com/gojammedia/",
+      "https://www.youtube.com/@gojammedia",
+      "https://www.facebook.com/Gojammedia/"
+    ]
+  }
+  </script>
 
   <script src="js/main.js"></script>
 </body>
