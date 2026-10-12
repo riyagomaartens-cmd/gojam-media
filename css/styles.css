@@ -822,3 +822,43 @@ a.card { text-decoration: none; color: inherit; }
   .testi-grid::-webkit-scrollbar { display: none; }
   .testi-card { flex: 0 0 84%; scroll-snap-align: start; }
 }
+
+/* ========== mobile page tabs (scrollable); desktop unaffected ========== */
+.mobile-tabs { display: none; }
+
+@media (max-width: 760px) {
+  .mobile-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    position: sticky;
+    top: 72px;
+    z-index: 95;
+    padding: 9px 24px;
+    background: rgba(10, 10, 11, 0.9);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .mobile-tabs::-webkit-scrollbar { display: none; }
+  .mobile-tabs a {
+    flex: none;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--muted);
+    padding: 6px 15px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+  }
+  .mobile-tabs a.active {
+    color: #1a1206;
+    background: var(--accent-grad);
+    border-color: transparent;
+  }
+  /* don't stack a third sticky bar on the services page */
+  .svc-jump { position: static; top: auto; }
+}
