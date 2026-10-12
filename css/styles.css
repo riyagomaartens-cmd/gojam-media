@@ -168,6 +168,10 @@ p { margin: 0 0 1em; }
 }
 .nav-links a:hover,
 .nav-links a.active { color: var(--text); }
+/* CTA button keeps its dark-on-gold text (override the nav link colours) */
+.nav-links a.btn-primary,
+.nav-links a.btn-primary:hover,
+.nav-links a.btn-primary.active { color: #1a1206; }
 .nav-cta { margin-left: 8px; }
 
 .nav-toggle {
@@ -688,8 +692,15 @@ p { margin: 0 0 1em; }
   .nav-links.open { transform: translateY(0); }
   .nav-links li { padding: 6px 0; }
   .nav-links a { display: block; padding: 10px 0; font-size: 1.05rem; }
-  .nav-cta { margin: 10px 0 0; }
-  .nav-cta .btn { width: 100%; justify-content: center; }
+  .nav-cta { margin: 14px 0 0; }
+  .nav-cta .btn {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    padding: 17px 26px;
+    font-size: 1.05rem;
+  }
   .brand-logo { height: 34px; }
 
   .grid-3, .grid-2 { grid-template-columns: 1fr; }
