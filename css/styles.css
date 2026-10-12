@@ -105,6 +105,9 @@ p { margin: 0 0 1em; }
   background: var(--accent-grad);
   color: #1a1206;
   box-shadow: 0 8px 30px rgba(217, 123, 43, 0.3);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
 }
 .btn-primary:hover {
   transform: translateY(-2px);
