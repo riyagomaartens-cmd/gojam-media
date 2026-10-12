@@ -1,4 +1,4 @@
-/* Go Jam Media — shared interactions */
+/* Go Jam Media: shared interactions */
 (function () {
   "use strict";
 
@@ -79,21 +79,4 @@
     });
   }
 
-  // --- contact form friendly handling (no backend) ---
-  var form = document.querySelector("form[data-contact]");
-  if (form) {
-    form.addEventListener("submit", function (e) {
-      // If the action is still the placeholder, prevent a broken submit
-      // and show a helpful message instead.
-      if (form.getAttribute("action") === "#" || !form.getAttribute("action")) {
-        e.preventDefault();
-        var status = form.querySelector(".form-status");
-        if (status) {
-          status.textContent =
-            "Thanks! Your form isn't connected to an inbox yet — set up a free Formspree endpoint (see README) and messages will land in your email.";
-          status.style.color = "var(--accent-1)";
-        }
-      }
-    });
-  }
 })();
