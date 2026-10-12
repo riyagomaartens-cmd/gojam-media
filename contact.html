@@ -37,7 +37,7 @@
         <li><a href="about.html">About</a></li>
         <li><a href="services.html">Services</a></li>
         <li><a href="work.html">Work</a></li>
-        <li class="nav-cta"><a href="contact.html#enquire" class="btn btn-primary active">Start a project</a></li>
+        <li class="nav-cta"><a href="book.html" class="btn btn-primary">Book a call</a></li>
       </ul>
     </div>
   </header>
@@ -48,6 +48,7 @@
     <a href="services.html">Services</a>
     <a href="work.html">Work</a>
     <a href="contact.html" class="active">Contact</a>
+    <a href="book.html">Book</a>
   </nav>
 
   <section class="page-hero">
@@ -104,18 +105,10 @@
     </div>
   </section>
 
-  <!-- BOOK A FREE STRATEGY CALL -->
-  <section class="section bg-alt" id="book">
-    <div class="container">
-      <div class="section-head reveal">
-        <p class="eyebrow">Book a call</p>
-        <h2>Prefer to talk it through?</h2>
-        <p>Book a free 20-minute strategy call. We'll look at your goals and recommend the right package.</p>
-      </div>
-      <div class="cal-embed reveal" id="gojam-cal-inline"></div>
-      <p class="form-fallback">Calendar not loading? <a href="https://cal.com/riyago-maartens-u3a2vc/free-go-jam-strategy-call" target="_blank" rel="noopener">Book here</a>.</p>
-    </div>
-  </section>
+  <div class="book-alt reveal" style="padding-bottom:72px;">
+    <p>Prefer to talk it through?</p>
+    <a href="book.html" class="btn btn-primary">Book a free call</a>
+  </div>
 
   <footer class="site-footer">
     <div class="container">
@@ -125,7 +118,7 @@
           <p>A Cape Town creative studio making visual content for brands and creatives. Always ready to go.</p>
         </div>
         <div class="footer-col"><h5>Studio</h5><ul><li><a href="about.html">About</a></li><li><a href="services.html">Services</a></li><li><a href="work.html">Work</a></li></ul></div>
-        <div class="footer-col"><h5>Connect</h5><ul><li><a href="contact.html">Contact</a></li><li><a href="mailto:riyago@ipicmedia.co.za">riyago@ipicmedia.co.za</a></li></ul></div>
+        <div class="footer-col"><h5>Connect</h5><ul><li><a href="book.html">Book a call</a></li><li><a href="contact.html">Contact</a></li><li><a href="mailto:riyago@ipicmedia.co.za">riyago@ipicmedia.co.za</a></li></ul></div>
         <div class="footer-col"><h5>Follow</h5><ul><li><a href="https://www.instagram.com/gojammedia/" target="_blank" rel="noopener">Instagram</a></li><li><a href="https://www.youtube.com/@gojammedia" target="_blank" rel="noopener">YouTube</a></li><li><a href="https://www.facebook.com/Gojammedia/" target="_blank" rel="noopener">Facebook</a></li></ul></div>
       </div>
       <div class="footer-bottom">
@@ -138,17 +131,5 @@
   <script src="js/main.js"></script>
   <script src="https://cdn.jotfor.ms/s/umd/latest/for-form-embed-handler.js"></script>
   <script>window.jotformEmbedHandler("iframe[id='JotFormIFrame-262263064974058']", "https://form.jotform.com")</script>
-
-  <!-- Cal.com inline booking embed -->
-  <script type="text/javascript">
-    (function (C, A, L) { let p = function (a, ar) { a.q.push(ar); }; let d = C.document; C.Cal = C.Cal || function () { let cal = C.Cal; let ar = arguments; if (!cal.loaded) { cal.ns = {}; cal.q = cal.q || []; d.head.appendChild(d.createElement("script")).src = A; cal.loaded = true; } if (ar[0] === L) { const api = function () { p(api, arguments); }; const namespace = ar[1]; api.q = api.q || []; if (typeof namespace === "string") { cal.ns[namespace] = cal.ns[namespace] || api; p(cal.ns[namespace], ar); p(cal, ["initNamespace", namespace]); } else p(cal, ar); return; } p(cal, ar); }; })(window, "https://app.cal.com/embed/embed.js", "init");
-    Cal("init", "gojam", { origin: "https://cal.com" });
-    Cal.ns.gojam("inline", {
-      elementOrSelector: "#gojam-cal-inline",
-      config: { layout: "month_view", theme: "dark" },
-      calLink: "riyago-maartens-u3a2vc/free-go-jam-strategy-call"
-    });
-    Cal.ns.gojam("ui", { theme: "dark", hideEventTypeDetails: false, layout: "month_view" });
-  </script>
 </body>
 </html>

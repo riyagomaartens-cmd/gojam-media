@@ -814,6 +814,10 @@ a.card { text-decoration: none; color: inherit; }
   background: var(--surface);
 }
 
+/* Secondary action under the booking calendar */
+.book-alt { margin-top: 40px; text-align: center; }
+.book-alt p { color: var(--muted); margin-bottom: 14px; }
+
 @media (max-width: 900px) {
   .testi-grid { grid-template-columns: repeat(2, 1fr); }
 }
