@@ -25,6 +25,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
+  <!-- Vercel Web Analytics (cookie-free visit counting) -->
+  <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
 
@@ -32,8 +34,9 @@
   <header class="site-header">
     <div class="container nav">
       <a class="brand" href="index.html" aria-label="Go Jam Media home">
-        <img src="images/logo.png" alt="Go Jam Media" class="brand-logo" />
+        <img src="images/logo.png" alt="Go Jam Media" class="brand-logo" width="320" height="178" />
       </a>
+      <a class="nav-book-mobile btn btn-primary" href="book.html">Book a call</a>
       <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
         <span></span><span></span><span></span>
       </button>
@@ -42,19 +45,11 @@
         <li><a href="about.html">About</a></li>
         <li><a href="services.html">Services</a></li>
         <li><a href="work.html">Work</a></li>
+        <li><a href="contact.html">Contact</a></li>
         <li class="nav-cta"><a href="book.html" class="btn btn-primary">Book a call</a></li>
       </ul>
     </div>
   </header>
-
-  <nav class="mobile-tabs" aria-label="Pages">
-    <a href="index.html" class="active">Home</a>
-    <a href="about.html">About</a>
-    <a href="services.html">Services</a>
-    <a href="work.html">Work</a>
-    <a href="contact.html">Contact</a>
-    <a href="book.html">Book</a>
-  </nav>
 
   <!-- ===== HERO ===== -->
   <section class="hero hero--photo">
@@ -81,7 +76,7 @@
         <div class="stat"><div class="num accent-text">1.5M+</div><div class="label">Views generated</div></div>
         <div class="stat"><div class="num accent-text">40+</div><div class="label">Productions delivered</div></div>
         <div class="stat"><div class="num accent-text">20+</div><div class="label">Artists & brands</div></div>
-        <div class="stat"><div class="num accent-text">100%</div><div class="label">In-house production</div></div>
+        <div class="stat"><div class="num accent-text">1</div><div class="label">Team, concept to final cut</div></div>
       </div>
     </div>
   </section>
@@ -91,7 +86,7 @@
     <div class="container">
       <div class="ig-bar flagship reveal">
         <div class="flagship-left">
-          <div class="flagship-photo" style="background-image:url('images/photos/flagship.jpg')"></div>
+          <div class="flagship-photo" style="background-image:url('images/photos/flagship.webp')"></div>
           <div>
             <p class="eyebrow">Our flagship</p>
             <h3>Always-on monthly content</h3>
@@ -113,32 +108,32 @@
       </div>
       <div class="grid grid-3">
         <a class="card has-photo reveal" href="services.html#retainers">
-          <div class="card-photo" style="background-image:url('images/photos/retainers-home.jpg');background-position:center 30%"></div>
+          <div class="card-photo" style="background-image:url('images/photos/retainers-home.webp');background-position:center 30%"></div>
           <h3>Monthly Retainers</h3>
           <p>Our flagship: always-on monthly content (reels, photos and ads) that keeps your brand relevant and seen.</p>
         </a>
         <a class="card has-photo reveal" href="services.html#music-videos">
-          <div class="card-photo" style="background-image:url('images/photos/music-videos.jpg')"></div>
+          <div class="card-photo" style="background-image:url('images/photos/music-videos.webp')"></div>
           <h3>Music Videos</h3>
           <p>Cinematic music videos for artists, from concept to final cut, with drone and multi-location options.</p>
         </a>
         <a class="card has-photo reveal" href="services.html#social-reels">
-          <div class="card-photo" style="background-image:url('images/photos/live-performance.jpg')"></div>
+          <div class="card-photo" style="background-image:url('images/photos/live-performance.webp')"></div>
           <h3>Social Reels</h3>
           <p>Scroll-stopping short-form built natively for Instagram and TikTok.</p>
         </a>
         <a class="card has-photo reveal" href="services.html#brand-videos">
-          <div class="card-photo" style="background-image:url('images/photos/commercial.jpg')"></div>
+          <div class="card-photo" style="background-image:url('images/photos/commercial.webp')"></div>
           <h3>Brand Videos</h3>
           <p>Brand storytelling with bold aesthetics and strategy that converts.</p>
         </a>
         <a class="card has-photo reveal" href="services.html#weddings">
-          <div class="card-photo" style="background-image:url('images/photos/wedding.jpg')"></div>
+          <div class="card-photo" style="background-image:url('images/photos/wedding.webp')"></div>
           <h3>Events &amp; Weddings</h3>
           <p>Highlight films and full multi-camera coverage, from live shows to the big day.</p>
         </a>
         <a class="card has-photo reveal" href="services.html#interviews-podcasts">
-          <div class="card-photo" style="background-image:url('images/photos/podcast.jpg')"></div>
+          <div class="card-photo" style="background-image:url('images/photos/podcast.webp')"></div>
           <h3>Podcasts &amp; Interviews</h3>
           <p>Multi-camera studio setups with professional lighting and editing.</p>
         </a>
@@ -219,7 +214,7 @@
     <div class="container">
       <div class="footer-top">
         <div class="footer-brand">
-          <a class="brand" href="index.html" aria-label="Go Jam Media home"><img src="images/logo.png" alt="Go Jam Media" class="brand-logo" /></a>
+          <a class="brand" href="index.html" aria-label="Go Jam Media home"><img src="images/logo.png" alt="Go Jam Media" class="brand-logo" width="320" height="178" /></a>
           <p>A Cape Town creative studio making visual content for brands and creatives. Always ready to go.</p>
         </div>
         <div class="footer-col">
@@ -248,7 +243,7 @@
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© <span data-year>2026</span> Go Jam Media. All rights reserved.</span>
+        <span>© <span data-year>2026</span> Go Jam Media. All rights reserved. <a href="privacy.html">Privacy</a></span>
         <div class="social">
           <a href="https://www.instagram.com/gojammedia/" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor"/></svg></a>
           <a href="https://www.youtube.com/@gojammedia" target="_blank" rel="noopener" aria-label="YouTube"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5.5" width="19" height="13" rx="4"/><path d="M10 9.2v5.6l4.8-2.8z" fill="currentColor"/></svg></a>

@@ -25,31 +25,26 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
+  <!-- Vercel Web Analytics (cookie-free visit counting) -->
+  <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
 
   <header class="site-header">
     <div class="container nav">
-      <a class="brand" href="index.html" aria-label="Go Jam Media home"><img src="images/logo.png" alt="Go Jam Media" class="brand-logo" /></a>
+      <a class="brand" href="index.html" aria-label="Go Jam Media home"><img src="images/logo.png" alt="Go Jam Media" class="brand-logo" width="320" height="178" /></a>
+      <a class="nav-book-mobile btn btn-primary" href="book.html">Book a call</a>
       <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
       <ul class="nav-links">
         <li><a href="index.html">Home</a></li>
         <li><a href="about.html" class="active">About</a></li>
         <li><a href="services.html">Services</a></li>
         <li><a href="work.html">Work</a></li>
+        <li><a href="contact.html">Contact</a></li>
         <li class="nav-cta"><a href="book.html" class="btn btn-primary">Book a call</a></li>
       </ul>
     </div>
   </header>
-
-  <nav class="mobile-tabs" aria-label="Pages">
-    <a href="index.html">Home</a>
-    <a href="about.html" class="active">About</a>
-    <a href="services.html">Services</a>
-    <a href="work.html">Work</a>
-    <a href="contact.html">Contact</a>
-    <a href="book.html">Book</a>
-  </nav>
 
   <!-- SECTION 1: HERO + INTRO (shared branded background) -->
   <div class="about-top">
@@ -61,7 +56,7 @@
           <h1 class="reveal accent-text">Always ready to go.</h1>
           <p class="reveal">We live in a world that never switches off. You're always online, and always expected to post, reply and show up.</p>
         </div>
-        <div class="hero-photo-side reveal" style="background-image:url('images/photos/about-top.jpg')"></div>
+        <div class="hero-photo-side reveal" style="background-image:url('images/photos/about-top.webp')"></div>
       </div>
     </div>
   </section>
@@ -87,7 +82,7 @@
           <p>Our work spans music videos and release content, brand videos and social reels, corporate interviews and podcasts, events and weddings, photography, and monthly content retainers. Every project combines bold visuals with strategic thinking, built to stop the scroll and turn viewers into customers.</p>
           <div style="margin-top:28px"><a href="services.html" class="btn btn-ghost">View packages</a></div>
         </div>
-        <div class="media photo reveal" style="background-image:url('images/photos/live-performance.jpg')"></div>
+        <div class="media photo reveal" style="background-image:url('images/photos/live-performance.webp')"></div>
       </div>
     </div>
   </section>
@@ -96,7 +91,7 @@
   <section class="section">
     <div class="container">
       <div class="split">
-        <div class="media photo reveal" style="background-image:url('images/photos/founder.jpg');aspect-ratio:4/5"></div>
+        <div class="media photo reveal" style="background-image:url('images/photos/founder.webp');aspect-ratio:4/5"></div>
         <div class="reveal">
           <p class="eyebrow">Meet the founder</p>
           <h2>Behind the lens.</h2>
@@ -133,7 +128,7 @@
     <div class="container">
       <div class="footer-top">
         <div class="footer-brand">
-          <a class="brand" href="index.html" aria-label="Go Jam Media home"><img src="images/logo.png" alt="Go Jam Media" class="brand-logo" /></a>
+          <a class="brand" href="index.html" aria-label="Go Jam Media home"><img src="images/logo.png" alt="Go Jam Media" class="brand-logo" width="320" height="178" /></a>
           <p>A Cape Town creative studio making visual content for brands and creatives. Always ready to go.</p>
         </div>
         <div class="footer-col"><h5>Studio</h5><ul><li><a href="about.html">About</a></li><li><a href="services.html">Services</a></li><li><a href="work.html">Work</a></li></ul></div>
@@ -141,7 +136,7 @@
         <div class="footer-col"><h5>Follow</h5><ul><li><a href="https://www.instagram.com/gojammedia/" target="_blank" rel="noopener">Instagram</a></li><li><a href="https://www.youtube.com/@gojammedia" target="_blank" rel="noopener">YouTube</a></li><li><a href="https://www.facebook.com/Gojammedia/" target="_blank" rel="noopener">Facebook</a></li></ul></div>
       </div>
       <div class="footer-bottom">
-        <span>© <span data-year>2026</span> Go Jam Media. All rights reserved.</span>
+        <span>© <span data-year>2026</span> Go Jam Media. All rights reserved. <a href="privacy.html">Privacy</a></span>
         <div class="social"><a href="https://www.instagram.com/gojammedia/" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor"/></svg></a><a href="https://www.youtube.com/@gojammedia" target="_blank" rel="noopener" aria-label="YouTube"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5.5" width="19" height="13" rx="4"/><path d="M10 9.2v5.6l4.8-2.8z" fill="currentColor"/></svg></a><a href="https://www.facebook.com/Gojammedia/" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M13.5 21v-7.5H16l.4-3H13.5V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 3.9v2.3H8v3h2.5V21z"/></svg></a></div>
       </div>
     </div>
