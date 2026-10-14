@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your delivery | Go Jam Media</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/deliver.css" />
+</head>
+<body>
+  <div class="glow"></div>
+
+  <!-- password gate (shown only when a delivery is password-protected) -->
+  <div class="gate hidden" id="gate">
+    <div class="gate-inner">
+      <img src="images/logo.png" alt="Go Jam Media" />
+      <h1>This delivery is private</h1>
+      <p>Enter the passcode Go Jam sent you to view your project.</p>
+      <input type="password" id="gate-input" placeholder="Passcode" autocomplete="off" />
+      <div class="err" id="gate-err"></div>
+      <button class="btn btn-primary" id="gate-btn" style="width:100%;justify-content:center;">Unlock</button>
+    </div>
+  </div>
+
+  <main class="page hidden" id="page">
+    <header class="dl-head">
+      <a href="index.html"><img class="dl-logo" src="images/logo.png" alt="Go Jam Media" /></a>
+    </header>
+    <div class="wrap" id="content"><!-- filled by JS --></div>
+  </main>
+
+  <!-- shown when the link has no / broken data -->
+  <main class="page hidden" id="empty">
+    <div class="wrap dl-empty">
+      <img class="dl-logo" src="images/logo.png" alt="Go Jam Media" style="margin:0 auto;height:46px;" />
+      <h1>This delivery link looks incomplete</h1>
+      <p>Double-check the link Go Jam sent you, or get in touch at <a href="mailto:riyago@ipicmedia.co.za">riyago@ipicmedia.co.za</a>.</p>
+    </div>
+  </main>
+
+  <!-- lightbox for enlarging photos -->
+  <div class="lb hidden" id="lb" aria-hidden="true">
+    <button class="lb-btn lb-close" id="lb-close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
+    <button class="lb-btn lb-prev" id="lb-prev" aria-label="Previous photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <img id="lb-img" alt="Project photo" />
+    <button class="lb-btn lb-next" id="lb-next" aria-label="Next photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+
+  <script>
+  (function () {
+    "use strict";
+
+    // a new delivery link (hash) should always show its own project
+    window.addEventListener("hashchange", function () { location.reload(); });
+
+    function b64decode(s) {
+      try {
+        return decodeURIComponent(Array.prototype.map.call(atob(s), function (c) {
+          return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(""));
+      } catch (e) { return null; }
+    }
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
+    // --- parse the delivery data from the URL hash ---
+    var raw = location.hash.slice(1);
+    var data = null;
+    if (raw) {
+      var json = b64decode(raw);
+      if (json) { try { data = JSON.parse(json); } catch (e) { data = null; } }
+    }
+
+    var elGate = document.getElementById("gate");
+    var elPage = document.getElementById("page");
+    var elEmpty = document.getElementById("empty");
+
+    if (!data || !data.videoId) {
+      elEmpty.classList.remove("hidden");
+      return;
+    }
+
+    // --- password gate (light protection) ---
+    var unlockedKey = "gojam-dl-" + raw.slice(0, 24);
+    function reveal() { elGate.classList.add("hidden"); elPage.classList.remove("hidden"); render(); }
+    if (data.pass) {
+      var already = false;
+      try { already = sessionStorage.getItem(unlockedKey) === "1"; } catch (e) {}
+      if (already) { reveal(); }
+      else {
+        elGate.classList.remove("hidden");
+        var input = document.getElementById("gate-input");
+        var errEl = document.getElementById("gate-err");
+        var tryUnlock = function () {
+          if (input.value === data.pass) {
+            try { sessionStorage.setItem(unlockedKey, "1"); } catch (e) {}
+            reveal();
+          } else { errEl.textContent = "That passcode isn't right. Try again."; }
+        };
+        document.getElementById("gate-btn").addEventListener("click", tryUnlock);
+        input.addEventListener("keydown", function (e) { if (e.key === "Enter") tryUnlock(); });
+        input.focus();
+      }
+    } else {
+      reveal();
+    }
+
+    function render() {
+      var v = data;
+      // site-wide defaults so every delivery shows the review (and later the feedback form)
+      var REVIEW_URL = "https://g.page/r/CdWlIt-KzBo2EAI/review";
+      var FEEDBACK_URL = "https://www.jotform.com/262861969493072"; // Go Jam customer feedback form
+      var reviewUrl = v.reviewUrl || REVIEW_URL;
+      var feedbackUrl = v.feedbackUrl || FEEDBACK_URL;
+      var downloadUrl = v.downloadUrl || ("https://drive.google.com/uc?export=download&id=" + encodeURIComponent(v.videoId));
+      var driveView = "https://drive.google.com/file/d/" + encodeURIComponent(v.videoId) + "/view";
+      var dateStr = "";
+      if (v.date) {
+        var d = new Date(v.date);
+        if (!isNaN(d)) dateStr = d.toLocaleDateString("en-ZA", { year: "numeric", month: "long", day: "numeric" });
+      }
+
+      var html = "";
+      // intro
+      html += '<div class="dl-intro">';
+      html += '<div class="dl-eyebrow"><span class="dot"></span> ' + (v.client ? "Delivery for " + esc(v.client) : "Your project is ready") + '</div>';
+      html += '<h1 class="dl-title">' + esc(v.title || "Your final video") + '</h1>';
+      var metaBits = [];
+      if (dateStr) metaBits.push(dateStr);
+      metaBits.push("Final delivery from Go Jam Media");
+      html += '<p class="dl-meta">' + metaBits.join("  &nbsp;/&nbsp;  ") + '</p>';
+      html += '</div>';
+
+      // video — Drive player (shows Drive's own thumbnail, plays on one click)
+      html += '<div class="dl-video' + (v.portrait ? ' is-portrait' : '') + '">';
+      html += '<iframe src="https://drive.google.com/file/d/' + encodeURIComponent(v.videoId) + '/preview" allow="autoplay; fullscreen" allowfullscreen title="' + esc(v.title || "Project video") + '"></iframe>';
+      html += '</div>';
+
+      // actions
+      html += '<div class="dl-actions">';
+      html += '<a class="btn btn-primary" href="' + esc(downloadUrl) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M5 21h14" fill="none" stroke="#1a1206" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Download video</a>';
+      html += '<a class="btn btn-ghost" href="' + esc(driveView) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M9 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Open in Drive</a>';
+      html += '</div>';
+
+      // note
+      if (v.note) {
+        html += '<div class="dl-note"><strong>A note from Go Jam</strong>' + esc(v.note) + '</div>';
+      }
+
+      // photos — a click-to-enlarge gallery (folder or individual links); filled after render
+      if ((v.photos && v.photos.length) || v.photoFolder) {
+        var folderUrl = v.photoFolder ? "https://drive.google.com/drive/folders/" + encodeURIComponent(v.photoFolder) : "";
+        html += '<div class="dl-section-head dl-section-head--row"><h2>Photos</h2>';
+        if (folderUrl) {
+          html += '<a class="btn btn-ghost btn-sm" href="' + esc(folderUrl) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M9 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Open in Drive</a>';
+        }
+        html += '</div><div id="photo-area"></div>';
+      }
+
+      // feedback / review
+      if (reviewUrl || feedbackUrl) {
+        html += '<div class="dl-feedback">';
+        html += '<h2>How did we do?</h2>';
+        html += '<p>Your feedback means the world, and a quick review helps other artists and brands find us.</p>';
+        html += '<div class="dl-actions">';
+        if (reviewUrl) {
+          html += '<a class="btn btn-primary" href="' + esc(reviewUrl) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 18.4 6.1 21l1.2-6.5L2.5 9.9l6.6-.9z"/></svg>Leave a Google review</a>';
+        }
+        if (feedbackUrl) {
+          html += '<a class="btn btn-ghost" href="' + esc(feedbackUrl) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>Share quick feedback</a>';
+        }
+        html += '</div></div>';
+      }
+
+      // next steps
+      var ctaUrl = v.ctaUrl || "https://gojam.co.za/book.html";
+      var ctaLabel = v.ctaLabel || "Book your next project";
+      html += '<div class="dl-cta">';
+      html += '<h2>Loved it?</h2>';
+      html += '<p>If this is the kind of work you want more of, let\'s line up the next one.</p>';
+      html += '<a class="btn btn-primary" href="' + esc(ctaUrl) + '" target="_blank" rel="noopener">' + esc(ctaLabel) + '</a>';
+      html += '</div>';
+
+      // footer
+      html += '<footer class="dl-foot">';
+      html += '<div>Delivered by Go Jam Media &nbsp;/&nbsp; <a href="mailto:riyago@ipicmedia.co.za">riyago@ipicmedia.co.za</a></div>';
+      html += '<div class="soc"><a href="https://www.instagram.com/gojammedia/" target="_blank" rel="noopener">Instagram</a><a href="https://www.youtube.com/@gojammedia" target="_blank" rel="noopener">YouTube</a><a href="https://gojam.co.za" target="_blank" rel="noopener">gojam.co.za</a></div>';
+      html += '</footer>';
+
+      document.getElementById("content").innerHTML = html;
+      setupPhotos(v);
+    }
+
+    // ---------- photos: enlargeable gallery + lightbox ----------
+    // Google Drive API key (referrer-restricted to gojam.co.za, Drive API only):
+    // a folder link auto-builds the enlargeable gallery. Falls back to Drive's grid on error.
+    var API_KEY = "AIzaSyA1MswWMe1nyw4hrXM6g49gxH2ko1y0pi8";
+
+    function photoThumb(id, size) {
+      return "https://drive.google.com/thumbnail?id=" + encodeURIComponent(id) + "&sz=w" + size;
+    }
+    function setupPhotos(v) {
+      var area = document.getElementById("photo-area");
+      if (!area) return;
+      if (v.photos && v.photos.length) {
+        renderGallery(area, v.photos);
+      } else if (v.photoFolder) {
+        if (API_KEY) {
+          fetchFolderImages(v.photoFolder).then(function (ids) {
+            if (ids && ids.length) renderGallery(area, ids);
+            else embedFolder(area, v.photoFolder);
+          }).catch(function () { embedFolder(area, v.photoFolder); });
+        } else {
+          embedFolder(area, v.photoFolder);
+        }
+      }
+    }
+    function fetchFolderImages(folderId) {
+      var q = "'" + folderId + "' in parents and mimeType contains 'image/' and trashed=false";
+      var url = "https://www.googleapis.com/drive/v3/files?q=" + encodeURIComponent(q) +
+        "&key=" + encodeURIComponent(API_KEY) + "&fields=files(id,name)&orderBy=name_natural&pageSize=200";
+      return fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+        return (j.files || []).map(function (f) { return f.id; });
+      });
+    }
+    function embedFolder(area, folderId) {
+      area.innerHTML = '<div class="dl-folder"><iframe src="https://drive.google.com/embeddedfolderview?id=' +
+        encodeURIComponent(folderId) + '#grid" title="Project photos"></iframe></div>';
+    }
+    function renderGallery(area, ids) {
+      var h = '<div class="dl-gallery">';
+      ids.forEach(function (id, i) {
+        h += '<a href="' + photoThumb(id, 2000) + '" class="dl-thumb" data-i="' + i + '"><img loading="lazy" src="' + photoThumb(id, 1000) + '" alt="Project photo" /></a>';
+      });
+      h += '</div>';
+      area.innerHTML = h;
+      var bigs = ids.map(function (id) { return photoThumb(id, 2000); });
+      area.querySelectorAll(".dl-thumb").forEach(function (a, i) {
+        a.addEventListener("click", function (e) { e.preventDefault(); openLightbox(bigs, i); });
+      });
+    }
+
+    // ---------- lightbox ----------
+    var lb = { imgs: [], i: 0 };
+    function openLightbox(imgs, i) {
+      lb.imgs = imgs; lb.i = i;
+      document.getElementById("lb-img").src = imgs[i];
+      document.getElementById("lb").classList.remove("hidden");
+    }
+    function moveLightbox(d) {
+      lb.i = (lb.i + d + lb.imgs.length) % lb.imgs.length;
+      document.getElementById("lb-img").src = lb.imgs[lb.i];
+    }
+    function closeLightbox() {
+      document.getElementById("lb").classList.add("hidden");
+      document.getElementById("lb-img").src = "";
+    }
+    (function wireLightbox() {
+      var el = document.getElementById("lb");
+      if (!el) return;
+      document.getElementById("lb-close").addEventListener("click", closeLightbox);
+      document.getElementById("lb-prev").addEventListener("click", function (e) { e.stopPropagation(); moveLightbox(-1); });
+      document.getElementById("lb-next").addEventListener("click", function (e) { e.stopPropagation(); moveLightbox(1); });
+      el.addEventListener("click", function (e) { if (e.target === el) closeLightbox(); });
+      document.addEventListener("keydown", function (e) {
+        if (el.classList.contains("hidden")) return;
+        if (e.key === "Escape") closeLightbox();
+        else if (e.key === "ArrowLeft") moveLightbox(-1);
+        else if (e.key === "ArrowRight") moveLightbox(1);
+      });
+    })();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New delivery | Go Jam Media</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/deliver.css" />
+</head>
+<body>
+  <div class="glow"></div>
+  <main class="page">
+    <header class="dl-head"><img class="dl-logo" src="images/logo.png" alt="Go Jam Media" /></header>
+    <div class="wrap bld">
+      <h1>New delivery</h1>
+      <p class="sub">Fill this in, generate the link, and send it to your client. Nothing is saved on a server, the link itself carries the project.</p>
+
+      <div class="bld-note">
+        <strong>Before you start:</strong> in Google Drive, set the video (and any photos) to
+        <em>Share, "Anyone with the link", Viewer</em>, or the client won't be able to watch or download.
+      </div>
+
+      <div class="field">
+        <label for="f-client">Client name</label>
+        <input type="text" id="f-client" placeholder="e.g. Beezlo Boys" />
+      </div>
+      <div class="field">
+        <label for="f-title">Project title</label>
+        <input type="text" id="f-title" placeholder="e.g. 16 Bars Official Music Video" />
+      </div>
+      <div class="field">
+        <label for="f-date">Delivery date</label>
+        <input type="date" id="f-date" />
+      </div>
+      <div class="field">
+        <label for="f-video">Google Drive video link <span style="color:var(--accent-1)">*</span></label>
+        <input type="text" id="f-video" placeholder="https://drive.google.com/file/d/..../view" />
+        <div class="hint">Paste the Drive share link for the final video. Must be shared "Anyone with the link".</div>
+      </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;">
+          <input type="checkbox" id="f-portrait" style="width:auto;" /> Vertical / portrait video (reel)
+        </label>
+        <div class="hint">Tick for 9:16 reels so the player fits them instead of showing black bars.</div>
+      </div>
+      <div class="field">
+        <label for="f-note">Personal note (optional)</label>
+        <textarea id="f-note" rows="3" placeholder="Thanks for trusting us with this one..."></textarea>
+      </div>
+      <div class="field">
+        <label for="f-photos">Photos (optional)</label>
+        <textarea id="f-photos" rows="2" placeholder="Paste a Google Drive FOLDER link, or individual image links (one per line)"></textarea>
+        <div class="hint">Easiest: paste the shared Drive folder link and every photo shows up automatically. Or paste individual image links, one per line.</div>
+      </div>
+      <div class="field">
+        <label for="f-review">Google review link (optional)</label>
+        <input type="text" id="f-review" placeholder="https://g.page/r/..../review" />
+        <div class="hint">From your Google Business Profile. Adds a "Leave a Google review" button.</div>
+      </div>
+      <div class="field">
+        <label for="f-feedback">Feedback form link (optional)</label>
+        <input type="text" id="f-feedback" placeholder="Jotform or Google Form link" />
+        <div class="hint">Adds a "Share quick feedback" button for your customer-satisfaction form.</div>
+      </div>
+      <div class="field">
+        <label for="f-ctalabel">Call-to-action button (optional)</label>
+        <input type="text" id="f-ctalabel" placeholder="Button text (default: Book your next project)" />
+        <input type="text" id="f-ctaurl" placeholder="Button link (default: https://gojam.co.za/book.html)" style="margin-top:10px;" />
+      </div>
+      <div class="field">
+        <label for="f-pass">Passcode (optional)</label>
+        <input type="text" id="f-pass" placeholder="Leave blank for no passcode" />
+        <div class="hint">Light protection only. Real privacy comes from the unguessable link + your Drive sharing settings.</div>
+      </div>
+
+      <button class="btn btn-primary" id="gen" style="margin-top:8px;">Create delivery link</button>
+
+      <div class="result hidden" id="result">
+        <strong>Delivery link ready. Send this to your client:</strong>
+        <div class="link-box">
+          <input type="text" id="out-link" readonly />
+          <button class="btn btn-ghost" id="copy">Copy</button>
+        </div>
+        <a class="btn btn-ghost" id="preview" target="_blank" rel="noopener">Preview it</a>
+      </div>
+    </div>
+  </main>
+
+  <script>
+  (function () {
+    "use strict";
+    var PROD_BASE = "https://gojam.co.za";
+
+    // default date = today
+    var dateEl = document.getElementById("f-date");
+    dateEl.value = new Date().toISOString().slice(0, 10);
+
+    function driveId(url) {
+      if (!url) return "";
+      url = url.trim();
+      var m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (m) return m[1];
+      if (/^[a-zA-Z0-9_-]{10,}$/.test(url)) return url; // looks like a bare id
+      return "";
+    }
+    function posterUrl(val) {
+      if (!val) return "";
+      val = val.trim();
+      if (/^https?:\/\//.test(val) && val.indexOf("drive.google.com") === -1) return val; // direct image URL
+      var id = driveId(val);
+      return id ? "https://drive.google.com/thumbnail?id=" + id + "&sz=w1600" : val;
+    }
+    function folderId(url) {
+      if (!url) return "";
+      var m = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+      return m ? m[1] : "";
+    }
+    function b64encode(str) {
+      return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function (_, p) {
+        return String.fromCharCode("0x" + p);
+      }));
+    }
+
+    document.getElementById("gen").addEventListener("click", function () {
+      var videoId = driveId(document.getElementById("f-video").value);
+      if (!videoId) { alert("Please paste a valid Google Drive video link."); return; }
+
+      var data = { videoId: videoId };
+      var client = document.getElementById("f-client").value.trim();
+      var title = document.getElementById("f-title").value.trim();
+      var date = document.getElementById("f-date").value;
+      var portrait = document.getElementById("f-portrait").checked;
+      var note = document.getElementById("f-note").value.trim();
+      var ctaLabel = document.getElementById("f-ctalabel").value.trim();
+      var ctaUrl = document.getElementById("f-ctaurl").value.trim();
+      var pass = document.getElementById("f-pass").value.trim();
+      var reviewUrl = document.getElementById("f-review").value.trim();
+      var feedbackUrl = document.getElementById("f-feedback").value.trim();
+
+      // photos: a folder link wins; otherwise collect individual file ids
+      var folder = "";
+      var fileIds = [];
+      document.getElementById("f-photos").value.split("\n")
+        .map(function (l) { return l.trim(); }).filter(Boolean)
+        .forEach(function (l) {
+          var f = folderId(l);
+          if (f) { folder = f; }
+          else { var id = driveId(l); if (id) fileIds.push(id); }
+        });
+
+      if (client) data.client = client;
+      if (title) data.title = title;
+      if (date) data.date = date;
+      if (portrait) data.portrait = true;
+      if (note) data.note = note;
+      if (ctaLabel) data.ctaLabel = ctaLabel;
+      if (ctaUrl) data.ctaUrl = ctaUrl;
+      if (pass) data.pass = pass;
+      if (reviewUrl) data.reviewUrl = reviewUrl;
+      if (feedbackUrl) data.feedbackUrl = feedbackUrl;
+      if (folder) data.photoFolder = folder;
+      else if (fileIds.length) data.photos = fileIds;
+
+      var hash = b64encode(JSON.stringify(data));
+      var prodLink = PROD_BASE + "/deliver.html#" + hash;
+      var previewLink = location.origin + "/deliver.html#" + hash;
+
+      document.getElementById("out-link").value = prodLink;
+      document.getElementById("preview").setAttribute("href", previewLink);
+      document.getElementById("result").classList.remove("hidden");
+      document.getElementById("result").scrollIntoView({ behavior: "smooth" });
+    });
+
+    document.getElementById("copy").addEventListener("click", function () {
+      var out = document.getElementById("out-link");
+      out.select();
+      try { navigator.clipboard.writeText(out.value); } catch (e) { document.execCommand("copy"); }
+      this.textContent = "Copied!";
+      var self = this;
+      setTimeout(function () { self.textContent = "Copy"; }, 1600);
+    });
+  })();
+  </script>
+</body>
+</html>
