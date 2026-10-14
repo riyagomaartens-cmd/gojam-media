@@ -75,6 +75,10 @@
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     }
+    function cleanName(name) {
+      var n = String(name || "").replace(/\.[a-z0-9]{2,4}$/i, "");
+      return n.trim() || String(name || "");
+    }
 
     // --- parse the delivery data from the URL hash ---
     var raw = location.hash.slice(1);
@@ -88,7 +92,7 @@
     var elPage = document.getElementById("page");
     var elEmpty = document.getElementById("empty");
 
-    if (!data || (!data.videoId && !data.folder)) {
+    if (!data || (!data.videoId && !data.folder && !(data.videos && data.videos.length))) {
       elEmpty.classList.remove("hidden");
       return;
     }
@@ -100,12 +104,12 @@
     function listFolder(fid) {
       var q = "'" + fid + "' in parents and trashed=false";
       var url = "https://www.googleapis.com/drive/v3/files?q=" + encodeURIComponent(q) +
-        "&key=" + encodeURIComponent(API_KEY) + "&fields=files(id,name,mimeType)&orderBy=name_natural&pageSize=500";
+        "&key=" + encodeURIComponent(API_KEY) + "&fields=files(id,name,mimeType,videoMediaMetadata(width,height))&orderBy=name_natural&pageSize=500";
       return fetch(url).then(function (r) { return r.json(); });
     }
     // If the link points at a whole folder, find the video + photos inside it, then render.
     function prepareAndRender() {
-      if (data.videoId) { render(); return; }
+      if (data.videoId || (data.videos && data.videos.length)) { render(); return; }
       if (data.folder) {
         document.getElementById("content").innerHTML = '<p class="dl-meta" style="text-align:center;padding:70px 0;">Loading your delivery…</p>';
         listFolder(data.folder).then(function (j) {
@@ -113,7 +117,10 @@
           var vids = files.filter(function (f) { return /^video\//.test(f.mimeType || ""); });
           var imgs = files.filter(function (f) { return /^image\//.test(f.mimeType || ""); });
           if (!vids.length) { showError(); return; }
-          data.videoId = vids[0].id;
+          data.videos = vids.map(function (f) {
+            var m = f.videoMediaMetadata || {};
+            return { id: f.id, name: f.name, w: m.width, h: m.height };
+          });
           if (imgs.length) { data.photos = imgs.map(function (f) { return f.id; }); data.photoFolder = data.folder; }
           render();
         }).catch(function () { showError(); });
@@ -150,8 +157,6 @@
       var FEEDBACK_URL = "https://www.jotform.com/262861969493072"; // Go Jam customer feedback form
       var reviewUrl = v.noReview ? "" : (v.reviewUrl || REVIEW_URL);
       var feedbackUrl = v.noFeedback ? "" : (v.feedbackUrl || FEEDBACK_URL);
-      var downloadUrl = v.downloadUrl || ("https://drive.google.com/uc?export=download&id=" + encodeURIComponent(v.videoId));
-      var driveView = "https://drive.google.com/file/d/" + encodeURIComponent(v.videoId) + "/view";
       var dateStr = "";
       if (v.date) {
         var d = new Date(v.date);
@@ -169,16 +174,25 @@
       html += '<p class="dl-meta">' + metaBits.join("  &nbsp;/&nbsp;  ") + '</p>';
       html += '</div>';
 
-      // video — Drive player (shows Drive's own thumbnail, plays on one click)
-      html += '<div class="dl-video' + (v.portrait ? ' is-portrait' : '') + '">';
-      html += '<iframe src="https://drive.google.com/file/d/' + encodeURIComponent(v.videoId) + '/preview" allow="autoplay; fullscreen" allowfullscreen title="' + esc(v.title || "Project video") + '"></iframe>';
-      html += '</div>';
-
-      // actions
-      html += '<div class="dl-actions">';
-      html += '<a class="btn btn-primary" href="' + esc(downloadUrl) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M5 21h14" fill="none" stroke="#1a1206" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Download video</a>';
-      html += '<a class="btn btn-ghost" href="' + esc(driveView) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M9 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Open in Drive</a>';
-      html += '</div>';
+      // videos — one player per video (a folder can hold several)
+      var videos = (v.videos && v.videos.length) ? v.videos : [{ id: v.videoId, portrait: v.portrait }];
+      var multiVid = videos.length > 1;
+      videos.forEach(function (vid) {
+        var isPortrait = (typeof vid.portrait === "boolean") ? vid.portrait
+          : (vid.h && vid.w) ? (vid.h > vid.w) : !!v.portrait;
+        var dl = "https://drive.google.com/uc?export=download&id=" + encodeURIComponent(vid.id);
+        var view = "https://drive.google.com/file/d/" + encodeURIComponent(vid.id) + "/view";
+        html += '<div class="dl-video-block">';
+        if (multiVid && vid.name) html += '<div class="dl-video-label">' + esc(cleanName(vid.name)) + '</div>';
+        html += '<div class="dl-video' + (isPortrait ? ' is-portrait' : '') + '">';
+        html += '<iframe src="https://drive.google.com/file/d/' + encodeURIComponent(vid.id) + '/preview" allow="autoplay; fullscreen" allowfullscreen title="' + esc(vid.name || v.title || "Project video") + '"></iframe>';
+        html += '</div>';
+        html += '<div class="dl-actions">';
+        html += '<a class="btn btn-primary" href="' + esc(dl) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M5 21h14" fill="none" stroke="#1a1206" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Download' + (multiVid ? '' : ' video') + '</a>';
+        html += '<a class="btn btn-ghost" href="' + esc(view) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M9 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Open in Drive</a>';
+        html += '</div>';
+        html += '</div>';
+      });
 
       // note
       if (v.note) {
