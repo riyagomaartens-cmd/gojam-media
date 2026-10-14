@@ -152,6 +152,17 @@ label.fld span { display: block; font-size: 0.8rem; color: var(--muted); margin-
 .chk-add { display: flex; gap: 10px; }
 .chk-add input { flex: 1; }
 
+/* ---------- multi-client picker ---------- */
+.fld { text-align: left; margin-bottom: 14px; }
+.fld > span { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.02em; }
+.cli-search { margin-bottom: 8px; }
+.cli-pick { max-height: 190px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px; background: var(--surface); }
+.cli-opt { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 7px; cursor: pointer; font-size: 0.9rem; }
+.cli-opt:hover { background: var(--surface-2); }
+.cli-opt input { width: 16px; height: 16px; flex: none; accent-color: var(--accent-1); cursor: pointer; }
+.cli-none { color: var(--muted-2); font-size: 0.85rem; padding: 10px; }
+.cli-hint { color: var(--muted-2); font-size: 0.76rem; margin-top: 6px; }
+
 /* ---------- empty / loading ---------- */
 .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
 .empty .big { font-family: var(--font-display); font-weight: 400; font-size: 1.4rem; color: var(--text); margin-bottom: 8px; letter-spacing: 0.02em; }

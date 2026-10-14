@@ -9,8 +9,36 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const supa = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const $ = (id) => document.getElementById(id);
-const PSTATUS = [["enquiry", "Enquiry"], ["onboarding", "Onboarding"], ["in_production", "In production"], ["delivered", "Delivered"], ["follow_up", "Follow-up"], ["closed", "Closed"]];
-const pLabel = (s) => (PSTATUS.find((x) => x[0] === s) || [s, s])[1];
+
+// pipeline stages (order = board column order)
+const PSTATUS = [
+  ["enquiry", "Enquiry"],
+  ["onboarding", "Onboarding"],
+  ["planning", "Planning"],
+  ["shooting", "Shooting"],
+  ["editing", "Editing"],
+  ["delivered", "Delivered"],
+  ["follow_up", "Follow-up"],
+  ["closed", "Closed"],
+];
+// legacy status -> current stage (so old rows never disappear before cleanup)
+const LEGACY = { in_production: "editing" };
+const normSt = (s) => LEGACY[s] || s;
+const pLabel = (s) => (PSTATUS.find((x) => x[0] === normSt(s)) || [s, s])[1];
+
+// each stage has its own colour, used for badges + card outlines
+const STAGE_COLOR = {
+  enquiry: "#6ea8d8",
+  onboarding: "#f0b544",
+  planning: "#a78bdf",
+  shooting: "#e08a3c",
+  editing: "#45b9b0",
+  delivered: "#4ba36a",
+  follow_up: "#e07a9a",
+  closed: "#8c8c96",
+};
+const stColor = (s) => STAGE_COLOR[normSt(s)] || "#8c8c96";
+const stageBadge = (s) => { const c = stColor(s); return `<span class="badge" style="color:${c};border-color:${c}66">${esc(pLabel(s))}</span>`; };
 
 // default onboarding -> delivery checklist, seeded on every new project
 const STEP_TEMPLATE = [
@@ -18,6 +46,7 @@ const STEP_TEMPLATE = [
   "Brief / treatment agreed",
   "Quote sent & accepted",
   "Deposit confirmed",
+  "Planning & shot list",
   "Shoot complete",
   "First edit sent",
   "Feedback & revisions",
@@ -35,6 +64,15 @@ const modal = (html) => { $("modal-root").innerHTML = `<div class="modal-bg" id=
 const closeModal = () => { $("modal-root").innerHTML = ""; };
 let toastT;
 const toast = (msg) => { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2200); };
+
+// clients attached to a project, from the join embed or the single FK
+function projClients(p) {
+  const pc = p.project_clients;
+  if (pc && pc.length) return pc.map((x) => x.clients).filter(Boolean);
+  if (p.clients) return [{ id: p.client_id, name: p.clients.name }];
+  return [];
+}
+const clientNames = (p) => projClients(p).map((c) => c.name).join(", ");
 
 /* ---------- auth ---------- */
 function showLogin() { $("login").classList.remove("hidden"); $("app").classList.add("hidden"); }
@@ -138,7 +176,12 @@ async function viewClient(id) {
   setView(`<div class="empty">Loading...</div>`);
   const { data: c } = await supa.from("clients").select("*").eq("id", id).single();
   if (!c) { setView(`<div class="empty"><div class="big">Client not found</div><p><a href="#/clients">Back to clients</a></p></div>`); return; }
-  const { data: projects } = await supa.from("projects").select("*").eq("client_id", id).order("created_at", { ascending: false });
+  // projects where this client is attached (via join table), falling back to the single FK
+  let projects = [];
+  const pc = await supa.from("project_clients").select("projects(*)").eq("client_id", id);
+  if (!pc.error && pc.data) projects = pc.data.map((r) => r.projects).filter(Boolean);
+  else { const r = await supa.from("projects").select("*").eq("client_id", id); projects = r.data || []; }
+  projects.sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
   setView(`
     <div class="breadcrumb"><a href="#/clients">Clients</a> / ${esc(c.name)}</div>
     <div class="detail-top"><h2>${esc(c.name)}</h2><span class="badge ${esc(c.status)}">${cap(c.status)}</span><div style="flex:1"></div><button class="btn btn-ghost btn-sm" id="edit-client">Edit</button></div>
@@ -152,8 +195,8 @@ async function viewClient(id) {
     <div class="view-head" style="margin-bottom:14px"><div class="section-title" style="margin:0">Projects</div><div style="flex:1"></div><button class="btn btn-primary btn-sm" id="add-project">New project</button></div>
     <div id="p-list"></div>`);
   $("edit-client").onclick = () => clientForm(c);
-  $("add-project").onclick = () => projectForm({ client: c });
-  renderProjects(projects || []);
+  $("add-project").onclick = () => projectForm({ presetClientId: c.id });
+  renderProjects(projects);
 }
 function renderProjects(projects) {
   const list = $("p-list");
@@ -161,35 +204,67 @@ function renderProjects(projects) {
   list.innerHTML = `<div class="rows">${projects.map(projectRow).join("")}</div>`;
   list.querySelectorAll("[data-pstatus]").forEach((sel) => (sel.onchange = async () => {
     const res = await supa.from("projects").update({ status: sel.value, updated_at: new Date().toISOString() }).eq("id", sel.dataset.pstatus);
-    toast(res.error ? res.error.message : "Updated");
+    if (res.error) { toast(res.error.message); return; }
+    toast("Updated"); viewClient(location.hash.split("/")[2]);
   }));
 }
 function projectRow(p) {
-  return `<div class="row"><div class="title"><a class="plink" href="#/projects/${p.id}">${esc(p.title)}</a></div>${p.due_date ? `<span class="date">Due ${esc(p.due_date)}</span>` : ""}<div class="spacer"></div><select data-pstatus="${p.id}">${PSTATUS.map(([v, l]) => `<option value="${v}" ${p.status === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>`;
+  const c = stColor(p.status);
+  return `<div class="row" style="border-color:${c}55;border-left:3px solid ${c}"><div class="title"><a class="plink" href="#/projects/${p.id}">${esc(p.title)}</a></div>${p.due_date ? `<span class="date">Due ${esc(p.due_date)}</span>` : ""}<div class="spacer"></div><select data-pstatus="${p.id}">${PSTATUS.map(([v, l]) => `<option value="${v}" ${normSt(p.status) === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>`;
 }
-function projectForm({ client, project }) {
-  const p = project || {};
-  const name = client ? client.name : (p._clientName || "");
+
+/* ---------- project create / edit (with multi-client picker) ---------- */
+async function projectForm({ project, presetClientId }) {
+  // load client list (use cache if we have it)
+  let clients = CLIENTS.length ? CLIENTS : ((await supa.from("clients").select("id,name,status").order("name")).data || []);
+  // work out which clients are currently attached
+  const selected = new Set();
+  if (project) {
+    const { data, error } = await supa.from("project_clients").select("client_id").eq("project_id", project.id);
+    if (!error && data) data.forEach((r) => selected.add(r.client_id));
+    if (!selected.size && project.client_id) selected.add(project.client_id);
+  } else if (presetClientId) selected.add(presetClientId);
+
   modal(`<h3>${project ? "Edit project" : "New project"}</h3>
-    ${name ? `<p style="color:var(--muted);font-size:0.82rem;margin:-8px 0 16px">for ${esc(name)}</p>` : ""}
-    <label class="fld"><span>Title</span><input id="pf-title" value="${escAttr(p.title || "")}" placeholder="e.g. 16 Bars Music Video" /></label>
-    <label class="fld"><span>Status</span><select id="pf-status">${PSTATUS.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></label>
-    <label class="fld"><span>Due date</span><input type="date" id="pf-due" value="${escAttr(p.due_date || "")}" /></label>
-    <label class="fld"><span>Notes</span><textarea id="pf-desc" rows="2">${esc(p.description || "")}</textarea></label>
+    <label class="fld"><span>Title</span><input id="pf-title" value="${escAttr(project ? project.title : "")}" placeholder="e.g. 16 Bars Music Video" /></label>
+    <div class="fld"><span>Client(s)</span>
+      <input id="cli-search" class="cli-search" placeholder="Filter clients..." />
+      <div class="cli-pick" id="cli-pick"></div>
+      <div class="cli-hint">Tick one or more. The top-most selected client is the main contact.</div>
+    </div>
+    <label class="fld"><span>Stage</span><select id="pf-status">${PSTATUS.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></label>
+    <label class="fld"><span>Due date</span><input type="date" id="pf-due" value="${escAttr(project && project.due_date ? project.due_date : "")}" /></label>
+    <label class="fld"><span>Notes</span><textarea id="pf-desc" rows="2">${esc(project ? project.description || "" : "")}</textarea></label>
     <div class="actions">${project ? `<button class="btn btn-danger btn-sm" id="pf-del">Delete</button>` : ""}<div style="flex:1"></div><button class="btn btn-ghost" id="pf-cancel">Cancel</button><button class="btn btn-primary" id="pf-save">${project ? "Save" : "Create"}</button></div>`);
-  $("pf-status").value = p.status || "enquiry";
+  $("pf-status").value = project ? normSt(project.status) : "enquiry";
+
+  const renderPick = () => {
+    const term = (val("cli-search") || "").toLowerCase();
+    const rows = clients.filter((c) => !term || c.name.toLowerCase().includes(term));
+    $("cli-pick").innerHTML = rows.length
+      ? rows.map((c) => `<label class="cli-opt"><input type="checkbox" value="${c.id}" ${selected.has(c.id) ? "checked" : ""} /><span>${esc(c.name)}</span></label>`).join("")
+      : `<div class="cli-none">No matches</div>`;
+    $("cli-pick").querySelectorAll("input").forEach((b) => (b.onchange = () => { b.checked ? selected.add(b.value) : selected.delete(b.value); }));
+  };
+  renderPick();
+  $("cli-search").oninput = renderPick;
   $("pf-cancel").onclick = closeModal;
+
   $("pf-save").onclick = async () => {
     const title = val("pf-title"); if (!title) { toast("Title is required"); return; }
+    const chosen = clients.filter((c) => selected.has(c.id)).map((c) => c.id);
+    if (!chosen.length) { toast("Pick at least one client"); return; }
     const fields = { title, status: $("pf-status").value, due_date: val("pf-due") || null, description: val("pf-desc") };
     if (project) {
-      const res = await supa.from("projects").update({ ...fields, updated_at: new Date().toISOString() }).eq("id", project.id);
+      const res = await supa.from("projects").update({ ...fields, client_id: chosen[0], updated_at: new Date().toISOString() }).eq("id", project.id);
       if (res.error) { toast(res.error.message); return; }
+      await supa.from("project_clients").delete().eq("project_id", project.id);
+      await supa.from("project_clients").insert(chosen.map((cid) => ({ project_id: project.id, client_id: cid })));
       closeModal(); toast("Saved"); viewProject(project.id);
     } else {
-      const ins = await supa.from("projects").insert({ client_id: client.id, ...fields }).select().single();
+      const ins = await supa.from("projects").insert({ client_id: chosen[0], ...fields }).select().single();
       if (ins.error) { toast(ins.error.message); return; }
-      // seed the standard checklist on the new project
+      await supa.from("project_clients").insert(chosen.map((cid) => ({ project_id: ins.data.id, client_id: cid })));
       await supa.from("project_steps").insert(STEP_TEMPLATE.map((label, i) => ({ project_id: ins.data.id, label, order_index: i })));
       closeModal(); toast("Project created"); location.hash = "#/projects/" + ins.data.id;
     }
@@ -206,25 +281,28 @@ function projectForm({ client, project }) {
 async function viewProject(id) {
   setActiveNav("projects");
   setView(`<div class="empty">Loading...</div>`);
-  const { data: p } = await supa.from("projects").select("*, clients(name)").eq("id", id).single();
+  let q = await supa.from("projects").select("*, project_clients(clients(id,name))").eq("id", id).single();
+  if (q.error) q = await supa.from("projects").select("*, clients(name)").eq("id", id).single();
+  const p = q.data;
   if (!p) { setView(`<div class="empty"><div class="big">Project not found</div><p><a href="#/projects">Back to projects</a></p></div>`); return; }
   const { data: stepsRaw } = await supa.from("project_steps").select("*").eq("project_id", id).order("order_index");
   const steps = stepsRaw || [];
-  const cname = p.clients ? p.clients.name : "";
+  const cl = projClients(p);
+  const clLinks = cl.length ? cl.map((c) => `<a href="#/clients/${c.id}">${esc(c.name)}</a>`).join(", ") : "Not set";
   const done = steps.filter((s) => s.done).length;
   const pct = steps.length ? Math.round((done / steps.length) * 100) : 0;
   setView(`
-    <div class="breadcrumb"><a href="#/projects">Projects</a> / ${p.client_id ? `<a href="#/clients/${p.client_id}">${esc(cname)}</a>` : esc(cname)} / ${esc(p.title)}</div>
-    <div class="detail-top"><h2>${esc(p.title)}</h2><span class="badge ${esc(p.status)}">${esc(pLabel(p.status))}</span><div style="flex:1"></div><button class="btn btn-ghost btn-sm" id="edit-proj">Edit</button></div>
+    <div class="breadcrumb"><a href="#/projects">Projects</a> / ${esc(p.title)}</div>
+    <div class="detail-top" style="border-left:4px solid ${stColor(p.status)};padding-left:14px"><h2>${esc(p.title)}</h2>${stageBadge(p.status)}<div style="flex:1"></div><button class="btn btn-ghost btn-sm" id="edit-proj">Edit</button></div>
     <div class="info-rows">
-      <div><div class="k">Client</div><div class="v">${p.client_id ? `<a href="#/clients/${p.client_id}">${esc(cname)}</a>` : esc(cname) || "Not set"}</div></div>
-      <div><div class="k">Stage</div><div class="v"><select id="proj-stage" style="margin-top:2px">${PSTATUS.map(([v, l]) => `<option value="${v}" ${p.status === v ? "selected" : ""}>${l}</option>`).join("")}</select></div></div>
+      <div><div class="k">Client${cl.length > 1 ? "s" : ""}</div><div class="v">${clLinks}</div></div>
+      <div><div class="k">Stage</div><div class="v"><select id="proj-stage" style="margin-top:2px">${PSTATUS.map(([v, l]) => `<option value="${v}" ${normSt(p.status) === v ? "selected" : ""}>${l}</option>`).join("")}</select></div></div>
       <div><div class="k">Due date</div><div class="v">${p.due_date ? esc(p.due_date) : "Not set"}</div></div>
     </div>
     ${p.description ? `<div class="notes-box">${esc(p.description)}</div>` : ""}
     <div class="section-title">Checklist</div>
     <div id="chk-wrap"></div>`);
-  $("edit-proj").onclick = () => projectForm({ project: { ...p, _clientName: cname } });
+  $("edit-proj").onclick = () => projectForm({ project: p });
   $("proj-stage").onchange = async (e) => {
     const res = await supa.from("projects").update({ status: e.target.value, updated_at: new Date().toISOString() }).eq("id", id);
     if (res.error) { toast(res.error.message); return; }
@@ -275,14 +353,17 @@ let STEPCOUNTS = {};
 let projView = "board";
 async function viewProjects() {
   setView(`<div class="view-head"><h2>Projects</h2><div class="spacer"></div>
+      <button class="btn btn-primary btn-sm" id="add-project">New project</button>
       <div class="seg" id="proj-seg"><button data-v="board" class="${projView === "board" ? "on" : ""}">Board</button><button data-v="list" class="${projView === "list" ? "on" : ""}">List</button></div>
     </div>
-    <div class="toolbar" id="pa-toolbar"><select id="pa-status"><option value="">All status</option>${PSTATUS.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></div>
+    <div class="toolbar" id="pa-toolbar"><select id="pa-status"><option value="">All stages</option>${PSTATUS.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></div>
     <div id="pa-list"><div class="empty">Loading...</div></div>`);
+  $("add-project").onclick = () => projectForm({});
   $("proj-seg").querySelectorAll("button").forEach((b) => (b.onclick = () => { projView = b.dataset.v; viewProjects(); }));
-  const { data, error } = await supa.from("projects").select("*, clients(name)").order("created_at", { ascending: false });
-  if (error) { $("pa-list").innerHTML = `<div class="empty"><div class="big">Couldn't load</div><p>${esc(error.message)}</p></div>`; return; }
-  ALLPROJECTS = data || [];
+  let q = await supa.from("projects").select("*, clients(name), project_clients(clients(id,name))").order("created_at", { ascending: false });
+  if (q.error) q = await supa.from("projects").select("*, clients(name)").order("created_at", { ascending: false });
+  if (q.error) { $("pa-list").innerHTML = `<div class="empty"><div class="big">Couldn't load</div><p>${esc(q.error.message)}</p></div>`; return; }
+  ALLPROJECTS = q.data || [];
   const { data: sc } = await supa.from("project_steps").select("project_id, done");
   STEPCOUNTS = {};
   (sc || []).forEach((s) => { const e = STEPCOUNTS[s.project_id] || (STEPCOUNTS[s.project_id] = { done: 0, total: 0 }); e.total++; if (s.done) e.done++; });
@@ -296,18 +377,19 @@ function stepBadge(pid) {
 function renderProjectsView() {
   const tb = $("pa-toolbar"); if (tb) tb.style.display = projView === "list" ? "flex" : "none";
   const list = $("pa-list");
-  if (!ALLPROJECTS.length) { list.innerHTML = `<div class="empty"><div class="big">No projects</div><p>Projects you add to clients appear here.</p></div>`; return; }
+  if (!ALLPROJECTS.length) { list.innerHTML = `<div class="empty"><div class="big">No projects</div><p>Add your first project with the button above.</p></div>`; return; }
   if (projView === "board") {
     list.innerHTML = `<div class="board">${PSTATUS.map(([v, l]) => {
-      const col = ALLPROJECTS.filter((p) => p.status === v);
-      return `<div class="board-col"><h4>${esc(l)} <span class="n">${col.length}</span></h4>${col.map((p) => `<div class="board-card" data-pid="${p.id}"><div class="t">${esc(p.title)}${stepBadge(p.id)}</div><div class="c">${esc(p.clients ? p.clients.name : "")}</div></div>`).join("")}</div>`;
+      const col = ALLPROJECTS.filter((p) => normSt(p.status) === v);
+      const c = STAGE_COLOR[v];
+      return `<div class="board-col"><h4 style="color:${c}">${esc(l)} <span class="n">${col.length}</span></h4>${col.map((p) => `<div class="board-card" data-pid="${p.id}" style="border-color:${c}55;border-left:3px solid ${c}"><div class="t">${esc(p.title)}${stepBadge(p.id)}</div><div class="c">${esc(clientNames(p))}</div></div>`).join("")}</div>`;
     }).join("")}</div>`;
     list.querySelectorAll("[data-pid]").forEach((el) => (el.onclick = () => (location.hash = "#/projects/" + el.dataset.pid)));
   } else {
     const st = $("pa-status") ? $("pa-status").value : "";
-    const rows = ALLPROJECTS.filter((p) => !st || p.status === st);
+    const rows = ALLPROJECTS.filter((p) => !st || normSt(p.status) === st);
     if (!rows.length) { list.innerHTML = `<div class="empty"><div class="big">No matches</div><p>Try another stage.</p></div>`; return; }
-    list.innerHTML = `<div class="rows">${rows.map((p) => `<div class="row" data-pid="${p.id}"><div class="title">${esc(p.title)}${stepBadge(p.id)}</div><span class="date">${esc(p.clients ? p.clients.name : "")}</span><div class="spacer"></div><span class="badge ${esc(p.status)}">${esc(pLabel(p.status))}</span></div>`).join("")}</div>`;
+    list.innerHTML = `<div class="rows">${rows.map((p) => { const c = stColor(p.status); return `<div class="row" data-pid="${p.id}" style="border-color:${c}55;border-left:3px solid ${c}"><div class="title">${esc(p.title)}${stepBadge(p.id)}</div><span class="date">${esc(clientNames(p))}</span><div class="spacer"></div>${stageBadge(p.status)}</div>`; }).join("")}</div>`;
     list.querySelectorAll(".row").forEach((r) => { r.style.cursor = "pointer"; r.onclick = () => (location.hash = "#/projects/" + r.dataset.pid); });
   }
 }
