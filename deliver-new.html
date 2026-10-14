@@ -50,11 +50,6 @@
         <textarea id="f-note" rows="3" placeholder="Thanks for trusting us with this one..."></textarea>
       </div>
       <div class="field">
-        <label for="f-photos">Photos (optional)</label>
-        <textarea id="f-photos" rows="2" placeholder="Drive folder link, or individual image links (one per line)"></textarea>
-        <div class="hint">Only if the photos are separate from the video. Paste a Drive folder link or individual image links. Skip this if you pasted a project folder above, the photos come from there.</div>
-      </div>
-      <div class="field">
         <label>Include on the delivery</label>
         <label class="tog"><input type="checkbox" id="f-review" checked /> "Leave a Google review" button</label>
         <label class="tog"><input type="checkbox" id="f-feedback" checked /> "Share quick feedback" button (satisfaction form)</label>
@@ -127,18 +122,6 @@
         data.folder = mainFolder;
       } else {
         data.videoId = videoId;
-        // optional separate photos: a folder link wins; otherwise individual file ids
-        var folder = "";
-        var fileIds = [];
-        document.getElementById("f-photos").value.split("\n")
-          .map(function (l) { return l.trim(); }).filter(Boolean)
-          .forEach(function (l) {
-            var f = folderId(l);
-            if (f) { folder = f; }
-            else { var id = driveId(l); if (id) fileIds.push(id); }
-          });
-        if (folder) data.photoFolder = folder;
-        else if (fileIds.length) data.photos = fileIds;
       }
 
       var client = document.getElementById("f-client").value.trim();
