@@ -88,14 +88,39 @@
     var elPage = document.getElementById("page");
     var elEmpty = document.getElementById("empty");
 
-    if (!data || !data.videoId) {
+    if (!data || (!data.videoId && !data.folder)) {
       elEmpty.classList.remove("hidden");
       return;
     }
 
     // --- password gate (light protection) ---
     var unlockedKey = "gojam-dl-" + raw.slice(0, 24);
-    function reveal() { elGate.classList.add("hidden"); elPage.classList.remove("hidden"); render(); }
+    function reveal() { elGate.classList.add("hidden"); elPage.classList.remove("hidden"); prepareAndRender(); }
+    function showError() { elPage.classList.add("hidden"); elGate.classList.add("hidden"); elEmpty.classList.remove("hidden"); }
+    function listFolder(fid) {
+      var q = "'" + fid + "' in parents and trashed=false";
+      var url = "https://www.googleapis.com/drive/v3/files?q=" + encodeURIComponent(q) +
+        "&key=" + encodeURIComponent(API_KEY) + "&fields=files(id,name,mimeType)&orderBy=name_natural&pageSize=500";
+      return fetch(url).then(function (r) { return r.json(); });
+    }
+    // If the link points at a whole folder, find the video + photos inside it, then render.
+    function prepareAndRender() {
+      if (data.videoId) { render(); return; }
+      if (data.folder) {
+        document.getElementById("content").innerHTML = '<p class="dl-meta" style="text-align:center;padding:70px 0;">Loading your delivery…</p>';
+        listFolder(data.folder).then(function (j) {
+          var files = (j && j.files) || [];
+          var vids = files.filter(function (f) { return /^video\//.test(f.mimeType || ""); });
+          var imgs = files.filter(function (f) { return /^image\//.test(f.mimeType || ""); });
+          if (!vids.length) { showError(); return; }
+          data.videoId = vids[0].id;
+          if (imgs.length) { data.photos = imgs.map(function (f) { return f.id; }); data.photoFolder = data.folder; }
+          render();
+        }).catch(function () { showError(); });
+        return;
+      }
+      showError();
+    }
     if (data.pass) {
       var already = false;
       try { already = sessionStorage.getItem(unlockedKey) === "1"; } catch (e) {}

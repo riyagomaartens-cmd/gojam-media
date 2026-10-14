@@ -37,9 +37,9 @@
         <input type="date" id="f-date" />
       </div>
       <div class="field">
-        <label for="f-video">Google Drive video link <span style="color:var(--accent-1)">*</span></label>
-        <input type="text" id="f-video" placeholder="https://drive.google.com/file/d/..../view" />
-        <div class="hint">Paste the Drive share link for the final video. Must be shared "Anyone with the link".</div>
+        <label for="f-video">Video link, or project folder link <span style="color:var(--accent-1)">*</span></label>
+        <input type="text" id="f-video" placeholder="Drive video file link, or a folder link" />
+        <div class="hint"><strong>One video:</strong> paste the video file link. <strong>Video + photos:</strong> paste a project <strong>folder</strong> link and we'll pull the video and photos out of it automatically. Must be shared "Anyone with the link".</div>
       </div>
       <div class="field">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;">
@@ -53,8 +53,8 @@
       </div>
       <div class="field">
         <label for="f-photos">Photos (optional)</label>
-        <textarea id="f-photos" rows="2" placeholder="Paste a Google Drive FOLDER link, or individual image links (one per line)"></textarea>
-        <div class="hint">Easiest: paste the shared Drive folder link and every photo shows up automatically. Or paste individual image links, one per line.</div>
+        <textarea id="f-photos" rows="2" placeholder="Drive folder link, or individual image links (one per line)"></textarea>
+        <div class="hint">Only if the photos are separate from the video. Paste a Drive folder link or individual image links. Skip this if you pasted a project folder above, the photos come from there.</div>
       </div>
       <div class="field">
         <label for="f-review">Google review link (optional)</label>
@@ -126,51 +126,54 @@
     }
 
     document.getElementById("gen").addEventListener("click", function () {
-      var videoId = driveId(document.getElementById("f-video").value);
-      if (!videoId) { alert("Please paste a valid Google Drive video link."); return; }
+      var mainVal = document.getElementById("f-video").value.trim();
+      var mainFolder = folderId(mainVal);
+      var videoId = mainFolder ? "" : driveId(mainVal);
+      if (!mainFolder && !videoId) { alert("Paste a Google Drive video link, or a project folder link."); return; }
 
-      var data = { videoId: videoId };
+      var data = {};
+      if (mainFolder) {
+        // the delivery page auto-detects the video + photos from this one folder
+        data.folder = mainFolder;
+      } else {
+        data.videoId = videoId;
+        // optional separate photos: a folder link wins; otherwise individual file ids
+        var folder = "";
+        var fileIds = [];
+        document.getElementById("f-photos").value.split("\n")
+          .map(function (l) { return l.trim(); }).filter(Boolean)
+          .forEach(function (l) {
+            var f = folderId(l);
+            if (f) { folder = f; }
+            else { var id = driveId(l); if (id) fileIds.push(id); }
+          });
+        if (folder) data.photoFolder = folder;
+        else if (fileIds.length) data.photos = fileIds;
+      }
+
       var client = document.getElementById("f-client").value.trim();
       var title = document.getElementById("f-title").value.trim();
       var date = document.getElementById("f-date").value;
-      var portrait = document.getElementById("f-portrait").checked;
       var note = document.getElementById("f-note").value.trim();
       var ctaLabel = document.getElementById("f-ctalabel").value.trim();
       var ctaUrl = document.getElementById("f-ctaurl").value.trim();
       var pass = document.getElementById("f-pass").value.trim();
       var reviewUrl = document.getElementById("f-review").value.trim();
       var feedbackUrl = document.getElementById("f-feedback").value.trim();
-
-      // photos: a folder link wins; otherwise collect individual file ids
-      var folder = "";
-      var fileIds = [];
-      document.getElementById("f-photos").value.split("\n")
-        .map(function (l) { return l.trim(); }).filter(Boolean)
-        .forEach(function (l) {
-          var f = folderId(l);
-          if (f) { folder = f; }
-          else { var id = driveId(l); if (id) fileIds.push(id); }
-        });
-
+      if (document.getElementById("f-portrait").checked) data.portrait = true;
       if (client) data.client = client;
       if (title) data.title = title;
       if (date) data.date = date;
-      if (portrait) data.portrait = true;
       if (note) data.note = note;
       if (ctaLabel) data.ctaLabel = ctaLabel;
       if (ctaUrl) data.ctaUrl = ctaUrl;
       if (pass) data.pass = pass;
       if (reviewUrl) data.reviewUrl = reviewUrl;
       if (feedbackUrl) data.feedbackUrl = feedbackUrl;
-      if (folder) data.photoFolder = folder;
-      else if (fileIds.length) data.photos = fileIds;
 
       var hash = b64encode(JSON.stringify(data));
-      var prodLink = PROD_BASE + "/deliver.html#" + hash;
-      var previewLink = location.origin + "/deliver.html#" + hash;
-
-      document.getElementById("out-link").value = prodLink;
-      document.getElementById("preview").setAttribute("href", previewLink);
+      document.getElementById("out-link").value = PROD_BASE + "/deliver.html#" + hash;
+      document.getElementById("preview").setAttribute("href", location.origin + "/deliver.html#" + hash);
       document.getElementById("result").classList.remove("hidden");
       document.getElementById("result").scrollIntoView({ behavior: "smooth" });
     });
