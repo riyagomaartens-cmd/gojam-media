@@ -148,8 +148,8 @@
       // site-wide defaults so every delivery shows the review (and later the feedback form)
       var REVIEW_URL = "https://g.page/r/CdWlIt-KzBo2EAI/review";
       var FEEDBACK_URL = "https://www.jotform.com/262861969493072"; // Go Jam customer feedback form
-      var reviewUrl = v.reviewUrl || REVIEW_URL;
-      var feedbackUrl = v.feedbackUrl || FEEDBACK_URL;
+      var reviewUrl = v.noReview ? "" : (v.reviewUrl || REVIEW_URL);
+      var feedbackUrl = v.noFeedback ? "" : (v.feedbackUrl || FEEDBACK_URL);
       var downloadUrl = v.downloadUrl || ("https://drive.google.com/uc?export=download&id=" + encodeURIComponent(v.videoId));
       var driveView = "https://drive.google.com/file/d/" + encodeURIComponent(v.videoId) + "/view";
       var dateStr = "";
@@ -211,13 +211,15 @@
       }
 
       // next steps
-      var ctaUrl = v.ctaUrl || "https://gojam.co.za/book.html";
-      var ctaLabel = v.ctaLabel || "Book your next project";
-      html += '<div class="dl-cta">';
-      html += '<h2>Loved it?</h2>';
-      html += '<p>If this is the kind of work you want more of, let\'s line up the next one.</p>';
-      html += '<a class="btn btn-primary" href="' + esc(ctaUrl) + '" target="_blank" rel="noopener">' + esc(ctaLabel) + '</a>';
-      html += '</div>';
+      if (!v.noCta) {
+        var ctaUrl = v.ctaUrl || "https://gojam.co.za/book.html";
+        var ctaLabel = v.ctaLabel || "Book your next project";
+        html += '<div class="dl-cta">';
+        html += '<h2>Loved it?</h2>';
+        html += '<p>If this is the kind of work you want more of, let\'s line up the next one.</p>';
+        html += '<a class="btn btn-primary" href="' + esc(ctaUrl) + '" target="_blank" rel="noopener">' + esc(ctaLabel) + '</a>';
+        html += '</div>';
+      }
 
       // footer
       html += '<footer class="dl-foot">';

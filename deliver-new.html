@@ -42,9 +42,7 @@
         <div class="hint"><strong>One video:</strong> paste the video file link. <strong>Video + photos:</strong> paste a project <strong>folder</strong> link and we'll pull the video and photos out of it automatically. Must be shared "Anyone with the link".</div>
       </div>
       <div class="field">
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;">
-          <input type="checkbox" id="f-portrait" style="width:auto;" /> Vertical / portrait video (reel)
-        </label>
+        <label class="tog"><input type="checkbox" id="f-portrait" /> Vertical / portrait video (reel)</label>
         <div class="hint">Tick for 9:16 reels so the player fits them instead of showing black bars.</div>
       </div>
       <div class="field">
@@ -57,19 +55,11 @@
         <div class="hint">Only if the photos are separate from the video. Paste a Drive folder link or individual image links. Skip this if you pasted a project folder above, the photos come from there.</div>
       </div>
       <div class="field">
-        <label for="f-review">Google review link (optional)</label>
-        <input type="text" id="f-review" placeholder="https://g.page/r/..../review" />
-        <div class="hint">From your Google Business Profile. Adds a "Leave a Google review" button.</div>
-      </div>
-      <div class="field">
-        <label for="f-feedback">Feedback form link (optional)</label>
-        <input type="text" id="f-feedback" placeholder="Jotform or Google Form link" />
-        <div class="hint">Adds a "Share quick feedback" button for your customer-satisfaction form.</div>
-      </div>
-      <div class="field">
-        <label for="f-ctalabel">Call-to-action button (optional)</label>
-        <input type="text" id="f-ctalabel" placeholder="Button text (default: Book your next project)" />
-        <input type="text" id="f-ctaurl" placeholder="Button link (default: https://gojam.co.za/book.html)" style="margin-top:10px;" />
+        <label>Include on the delivery</label>
+        <label class="tog"><input type="checkbox" id="f-review" checked /> "Leave a Google review" button</label>
+        <label class="tog"><input type="checkbox" id="f-feedback" checked /> "Share quick feedback" button (satisfaction form)</label>
+        <label class="tog"><input type="checkbox" id="f-cta" checked /> "Book your next project" button</label>
+        <div class="hint">These use your saved Google review and feedback links. Switch off any you don't want on this delivery.</div>
       </div>
       <div class="field">
         <label for="f-pass">Passcode (optional)</label>
@@ -155,21 +145,16 @@
       var title = document.getElementById("f-title").value.trim();
       var date = document.getElementById("f-date").value;
       var note = document.getElementById("f-note").value.trim();
-      var ctaLabel = document.getElementById("f-ctalabel").value.trim();
-      var ctaUrl = document.getElementById("f-ctaurl").value.trim();
       var pass = document.getElementById("f-pass").value.trim();
-      var reviewUrl = document.getElementById("f-review").value.trim();
-      var feedbackUrl = document.getElementById("f-feedback").value.trim();
       if (document.getElementById("f-portrait").checked) data.portrait = true;
+      if (!document.getElementById("f-review").checked) data.noReview = true;
+      if (!document.getElementById("f-feedback").checked) data.noFeedback = true;
+      if (!document.getElementById("f-cta").checked) data.noCta = true;
       if (client) data.client = client;
       if (title) data.title = title;
       if (date) data.date = date;
       if (note) data.note = note;
-      if (ctaLabel) data.ctaLabel = ctaLabel;
-      if (ctaUrl) data.ctaUrl = ctaUrl;
       if (pass) data.pass = pass;
-      if (reviewUrl) data.reviewUrl = reviewUrl;
-      if (feedbackUrl) data.feedbackUrl = feedbackUrl;
 
       var hash = b64encode(JSON.stringify(data));
       document.getElementById("out-link").value = PROD_BASE + "/deliver.html#" + hash;

@@ -218,7 +218,9 @@ img { max-width: 100%; display: block; }
 .bld h1 { font-family: var(--font-display); font-weight: 400; font-size: 2.2rem; margin-bottom: 6px; }
 .bld .sub { color: var(--muted); margin-bottom: 30px; }
 .field { margin-bottom: 20px; }
-.field label { display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 7px; letter-spacing: 0.02em; }
+.field label { display: block; font-family: var(--font-display); font-weight: 400; font-size: 1.05rem; letter-spacing: 0.03em; margin-bottom: 8px; }
+.field .tog { display: flex; align-items: center; gap: 10px; cursor: pointer; font-family: var(--font-body); font-weight: 400; font-size: 0.92rem; letter-spacing: 0; margin: 12px 0 0; }
+.field .tog input { width: auto; }
 .field .hint { color: var(--muted-2); font-size: 0.78rem; font-weight: 400; margin-top: 5px; }
 .field input, .field textarea {
   width: 100%; padding: 13px 15px; font-family: inherit; font-size: 0.95rem;
