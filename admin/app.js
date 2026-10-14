@@ -282,7 +282,7 @@ async function viewProject(id) {
   setActiveNav("projects");
   setView(`<div class="empty">Loading...</div>`);
   let q = await supa.from("projects").select("*, project_clients(clients(id,name))").eq("id", id).single();
-  if (q.error) q = await supa.from("projects").select("*, clients(name)").eq("id", id).single();
+  if (q.error) q = await supa.from("projects").select("*, clients!client_id(name)").eq("id", id).single();
   const p = q.data;
   if (!p) { setView(`<div class="empty"><div class="big">Project not found</div><p><a href="#/projects">Back to projects</a></p></div>`); return; }
   const { data: stepsRaw } = await supa.from("project_steps").select("*").eq("project_id", id).order("order_index");
@@ -360,8 +360,8 @@ async function viewProjects() {
     <div id="pa-list"><div class="empty">Loading...</div></div>`);
   $("add-project").onclick = () => projectForm({});
   $("proj-seg").querySelectorAll("button").forEach((b) => (b.onclick = () => { projView = b.dataset.v; viewProjects(); }));
-  let q = await supa.from("projects").select("*, clients(name), project_clients(clients(id,name))").order("created_at", { ascending: false });
-  if (q.error) q = await supa.from("projects").select("*, clients(name)").order("created_at", { ascending: false });
+  let q = await supa.from("projects").select("*, project_clients(clients(id,name))").order("created_at", { ascending: false });
+  if (q.error) q = await supa.from("projects").select("*, clients!client_id(name)").order("created_at", { ascending: false });
   if (q.error) { $("pa-list").innerHTML = `<div class="empty"><div class="big">Couldn't load</div><p>${esc(q.error.message)}</p></div>`; return; }
   ALLPROJECTS = q.data || [];
   const { data: sc } = await supa.from("project_steps").select("project_id, done");
