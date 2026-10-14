@@ -174,10 +174,16 @@
       html += '<p class="dl-meta">' + metaBits.join("  &nbsp;/&nbsp;  ") + '</p>';
       html += '</div>';
 
+      // open the whole folder in Drive (handy for raw footage / grabbing everything at once)
+      if (v.folder) {
+        html += '<div class="dl-folderbar"><a class="btn btn-ghost btn-sm" href="https://drive.google.com/drive/folders/' + encodeURIComponent(v.folder) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>Open the full folder in Drive</a></div>';
+      }
+
       // videos — one player per video (a folder can hold several)
       var videos = (v.videos && v.videos.length) ? v.videos : [{ id: v.videoId, portrait: v.portrait }];
+      var MAX_PLAYERS = 12;
       var multiVid = videos.length > 1;
-      videos.forEach(function (vid) {
+      videos.slice(0, MAX_PLAYERS).forEach(function (vid) {
         var isPortrait = (typeof vid.portrait === "boolean") ? vid.portrait
           : (vid.h && vid.w) ? (vid.h > vid.w) : !!v.portrait;
         var dl = "https://drive.google.com/uc?export=download&id=" + encodeURIComponent(vid.id);
@@ -193,6 +199,9 @@
         html += '</div>';
         html += '</div>';
       });
+      if (videos.length > MAX_PLAYERS) {
+        html += '<p class="dl-meta" style="margin-top:30px;">+ ' + (videos.length - MAX_PLAYERS) + ' more videos in the folder. Use "Open the full folder in Drive" above to view and download them all.</p>';
+      }
 
       // note
       if (v.note) {
