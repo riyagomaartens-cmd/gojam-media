@@ -163,6 +163,12 @@ label.fld span { display: block; font-size: 0.8rem; color: var(--muted); margin-
 .cli-none { color: var(--muted-2); font-size: 0.85rem; padding: 10px; }
 .cli-hint { color: var(--muted-2); font-size: 0.76rem; margin-top: 6px; }
 
+/* ---------- delivery form + rows ---------- */
+.bld-note-sm { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent-1); border-radius: var(--radius-sm); padding: 10px 14px; color: var(--muted); font-size: 0.8rem; margin-bottom: 16px; }
+.tog2 { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: var(--text); padding: 6px 0; cursor: pointer; }
+.tog2 input { width: 16px; height: 16px; flex: none; accent-color: var(--accent-1); cursor: pointer; }
+.dlv-sub { color: var(--muted-2); font-size: 0.78rem; margin-top: 3px; }
+
 /* ---------- empty / loading ---------- */
 .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
 .empty .big { font-family: var(--font-display); font-weight: 400; font-size: 1.4rem; color: var(--text); margin-bottom: 8px; letter-spacing: 0.02em; }

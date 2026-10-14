@@ -74,6 +74,25 @@ function projClients(p) {
 }
 const clientNames = (p) => projClients(p).map((c) => c.name).join(", ");
 
+// delivery-link helpers — must match deliver-new.html exactly so links open in the portal
+function driveId(url) {
+  if (!url) return "";
+  url = url.trim();
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  if (/^[a-zA-Z0-9_-]{10,}$/.test(url)) return url;
+  return "";
+}
+function folderId(url) {
+  if (!url) return "";
+  const m = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : "";
+}
+function b64encode(str) {
+  return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p) => String.fromCharCode("0x" + p)));
+}
+async function copyText(t) { try { await navigator.clipboard.writeText(t); return true; } catch (e) { return false; } }
+
 /* ---------- auth ---------- */
 function showLogin() { $("login").classList.remove("hidden"); $("app").classList.add("hidden"); }
 function showApp(session) {
@@ -301,14 +320,81 @@ async function viewProject(id) {
     </div>
     ${p.description ? `<div class="notes-box">${esc(p.description)}</div>` : ""}
     <div class="section-title">Checklist</div>
-    <div id="chk-wrap"></div>`);
+    <div id="chk-wrap"></div>
+    <div class="view-head" style="margin:34px 0 14px"><div class="section-title" style="margin:0">Deliveries</div><div style="flex:1"></div><button class="btn btn-primary btn-sm" id="add-delivery">New delivery</button></div>
+    <div id="dlv-list"><div class="empty" style="padding:20px">Loading...</div></div>`);
   $("edit-proj").onclick = () => projectForm({ project: p });
   $("proj-stage").onchange = async (e) => {
     const res = await supa.from("projects").update({ status: e.target.value, updated_at: new Date().toISOString() }).eq("id", id);
     if (res.error) { toast(res.error.message); return; }
     toast("Stage updated"); viewProject(id);
   };
+  const primaryId = p.client_id || (cl[0] && cl[0].id) || null;
+  const primaryName = (cl[0] && cl[0].name) || "";
+  $("add-delivery").onclick = () => deliveryForm({ projectId: id, clientId: primaryId, projectTitle: p.title, clientName: primaryName, onDone: () => loadDeliveries(id) });
   renderChecklist(id, steps, done, pct);
+  loadDeliveries(id);
+}
+
+/* ---------- deliveries on a project ---------- */
+async function loadDeliveries(projectId) {
+  const box = $("dlv-list"); if (!box) return;
+  const { data, error } = await supa.from("deliveries").select("*").eq("project_id", projectId).order("created_at", { ascending: false });
+  if (error) { box.innerHTML = `<div class="empty" style="padding:20px"><p>${esc(error.message)}</p></div>`; return; }
+  const rows = data || [];
+  if (!rows.length) { box.innerHTML = `<div class="empty" style="padding:24px 20px"><p>No deliveries yet. Create a link to send your client.</p></div>`; return; }
+  box.innerHTML = `<div class="rows">${rows.map(deliveryRow).join("")}</div>`;
+  box.querySelectorAll("[data-copy]").forEach((b) => (b.onclick = async (e) => { e.preventDefault(); const ok = await copyText(b.dataset.copy); toast(ok ? "Link copied" : "Copy failed"); }));
+}
+function deliveryRow(d) {
+  const when = String(d.delivered_at || d.created_at || "").slice(0, 10);
+  return `<div class="row"><div class="title">${esc(d.title || "Delivery")}</div><span class="date">${esc(when)}</span><div class="spacer"></div><a class="btn btn-ghost btn-sm" href="${escAttr(d.delivery_link)}" target="_blank" rel="noopener">Open</a><button class="btn btn-ghost btn-sm" data-copy="${escAttr(d.delivery_link)}">Copy</button></div>`;
+}
+function deliveryForm({ projectId, clientId, projectTitle, clientName, onDone }) {
+  modal(`<h3>New delivery</h3>
+    <div class="bld-note-sm">In Google Drive, set the video and photos to "Anyone with the link, Viewer" first, or the client can't open them.</div>
+    <label class="fld"><span>Title</span><input id="d-title" value="${escAttr(projectTitle || "")}" placeholder="e.g. 16 Bars Official Music Video" /></label>
+    <label class="fld"><span>Video link, or project folder link</span><input id="d-video" placeholder="Drive video file link, or a folder link" /></label>
+    <div class="cli-hint" style="margin:-8px 0 14px">One video: paste the file link. Multiple videos or photos: paste a folder link and we pull them all out.</div>
+    <label class="fld"><span>Delivery date</span><input type="date" id="d-date" /></label>
+    <label class="fld"><span>Personal note (optional)</span><textarea id="d-note" rows="2" placeholder="Thanks for trusting us with this one..."></textarea></label>
+    <div class="fld"><span>Vertical video</span><label class="tog2"><input type="checkbox" id="d-portrait" /> Portrait / reel (9:16)</label></div>
+    <div class="fld"><span>Include on the delivery</span>
+      <label class="tog2"><input type="checkbox" id="d-review" checked /> Google review button</label>
+      <label class="tog2"><input type="checkbox" id="d-feedback" checked /> Feedback form button</label>
+      <label class="tog2"><input type="checkbox" id="d-cta" checked /> Book next project button</label>
+    </div>
+    <label class="fld"><span>Passcode (optional)</span><input id="d-pass" placeholder="Leave blank for none" /></label>
+    <div class="actions"><div style="flex:1"></div><button class="btn btn-ghost" id="d-cancel">Cancel</button><button class="btn btn-primary" id="d-save">Create link</button></div>`);
+  $("d-date").value = new Date().toISOString().slice(0, 10);
+  $("d-cancel").onclick = closeModal;
+  $("d-save").onclick = async () => {
+    const mainVal = val("d-video");
+    const fol = folderId(mainVal);
+    const vid = fol ? "" : driveId(mainVal);
+    if (!fol && !vid) { toast("Paste a Drive video link or a folder link"); return; }
+    const data = {};
+    if (fol) data.folder = fol; else data.videoId = vid;
+    if ($("d-portrait").checked) data.portrait = true;
+    if (!$("d-review").checked) data.noReview = true;
+    if (!$("d-feedback").checked) data.noFeedback = true;
+    if (!$("d-cta").checked) data.noCta = true;
+    if (clientName) data.client = clientName;
+    const title = val("d-title"); if (title) data.title = title;
+    const date = val("d-date"); if (date) data.date = date;
+    const note = val("d-note"); if (note) data.note = note;
+    const pass = val("d-pass"); if (pass) data.pass = pass;
+    const link = location.origin + "/deliver.html#" + b64encode(JSON.stringify(data));
+    const res = await supa.from("deliveries").insert({
+      project_id: projectId, client_id: clientId, title: title || null,
+      delivery_link: link, drive_folder_id: fol || null, drive_video_id: vid || null,
+      portrait: !!data.portrait, delivered_at: date ? new Date(date).toISOString() : new Date().toISOString(),
+    });
+    if (res.error) { toast(res.error.message); return; }
+    const copied = await copyText(link);
+    closeModal(); toast(copied ? "Link created and copied" : "Delivery link created");
+    if (onDone) onDone();
+  };
 }
 function renderChecklist(id, steps, done, pct) {
   const wrap = $("chk-wrap");
@@ -394,10 +480,22 @@ function renderProjectsView() {
   }
 }
 
-/* ---------- deliveries (next phase) ---------- */
-function viewDeliveries() {
-  setView(`<div class="view-head"><h2>Deliveries</h2></div>
-    <div class="empty"><div class="big">Coming next</div><p>Soon you'll create delivery links from each project and they'll be recorded here against the client. For now, the standalone builder is at <a href="/deliver-new.html" target="_blank" rel="noopener">/deliver-new.html</a>.</p></div>`);
+/* ---------- deliveries tab (all deliveries) ---------- */
+async function viewDeliveries() {
+  setActiveNav("deliveries");
+  setView(`<div class="view-head"><h2>Deliveries</h2></div><div id="dlv-all"><div class="empty">Loading...</div></div>`);
+  const box = $("dlv-all");
+  const { data, error } = await supa.from("deliveries").select("*, clients(name), projects(title)").order("created_at", { ascending: false });
+  if (error) { box.innerHTML = `<div class="empty"><div class="big">Couldn't load</div><p>${esc(error.message)}</p></div>`; return; }
+  const rows = data || [];
+  if (!rows.length) { box.innerHTML = `<div class="empty"><div class="big">No deliveries yet</div><p>Open a project and hit "New delivery" to make a link. Every one you create is recorded here against the client. The standalone builder is still at <a href="/deliver-new.html" target="_blank" rel="noopener">/deliver-new.html</a>.</p></div>`; return; }
+  box.innerHTML = `<div class="rows">${rows.map((d) => {
+    const when = String(d.delivered_at || d.created_at || "").slice(0, 10);
+    const sub = d.clients ? esc(d.clients.name) : "";
+    return `<div class="row" data-pid="${d.project_id || ""}"><div class="title">${esc(d.title || (d.projects ? d.projects.title : "Delivery"))}${sub ? `<div class="dlv-sub">${sub}</div>` : ""}</div><span class="date">${esc(when)}</span><div class="spacer"></div><a class="btn btn-ghost btn-sm" href="${escAttr(d.delivery_link)}" target="_blank" rel="noopener">Open</a><button class="btn btn-ghost btn-sm" data-copy="${escAttr(d.delivery_link)}">Copy</button></div>`;
+  }).join("")}</div>`;
+  box.querySelectorAll("[data-copy]").forEach((b) => (b.onclick = async (e) => { e.preventDefault(); e.stopPropagation(); const ok = await copyText(b.dataset.copy); toast(ok ? "Link copied" : "Copy failed"); }));
+  box.querySelectorAll(".row").forEach((r) => { if (r.dataset.pid) { r.style.cursor = "pointer"; r.onclick = (e) => { if (e.target.closest("a,button")) return; location.hash = "#/projects/" + r.dataset.pid; }; } });
 }
 
 /* ---------- boot ---------- */
