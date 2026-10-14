@@ -58,6 +58,11 @@
     // a new delivery link (hash) should always show its own project
     window.addEventListener("hashchange", function () { location.reload(); });
 
+    // Google Drive API key (referrer-restricted to gojam.co.za, Drive API only):
+    // a folder link auto-builds the enlargeable gallery; falls back to Drive's grid on error.
+    // Declared up here so it is set before the page renders the gallery.
+    var API_KEY = "AIzaSyA1MswWMe1nyw4hrXM6g49gxH2ko1y0pi8";
+
     function b64decode(s) {
       try {
         return decodeURIComponent(Array.prototype.map.call(atob(s), function (c) {
@@ -200,10 +205,6 @@
     }
 
     // ---------- photos: enlargeable gallery + lightbox ----------
-    // Google Drive API key (referrer-restricted to gojam.co.za, Drive API only):
-    // a folder link auto-builds the enlargeable gallery. Falls back to Drive's grid on error.
-    var API_KEY = "AIzaSyA1MswWMe1nyw4hrXM6g49gxH2ko1y0pi8";
-
     function photoThumb(id, size) {
       return "https://drive.google.com/thumbnail?id=" + encodeURIComponent(id) + "&sz=w" + size;
     }
