@@ -12,6 +12,18 @@ const $ = (id) => document.getElementById(id);
 const PSTATUS = [["enquiry", "Enquiry"], ["onboarding", "Onboarding"], ["in_production", "In production"], ["delivered", "Delivered"], ["follow_up", "Follow-up"], ["closed", "Closed"]];
 const pLabel = (s) => (PSTATUS.find((x) => x[0] === s) || [s, s])[1];
 
+// default onboarding -> delivery checklist, seeded on every new project
+const STEP_TEMPLATE = [
+  "Enquiry received",
+  "Brief / treatment agreed",
+  "Quote sent & accepted",
+  "Deposit confirmed",
+  "Shoot complete",
+  "First edit sent",
+  "Feedback & revisions",
+  "Final delivery",
+];
+
 /* ---------- helpers ---------- */
 const esc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const escAttr = (s) => esc(s).replace(/"/g, "&quot;");
@@ -47,8 +59,9 @@ $("signout").onclick = () => supa.auth.signOut();
 /* ---------- router ---------- */
 function router() {
   const parts = (location.hash || "#/clients").slice(2).split("/");
-  setActiveNav(parts[0] || "clients");
+  setActiveNav(parts[0] === "projects" ? "projects" : parts[0] || "clients");
   if (parts[0] === "clients" && parts[1]) return viewClient(parts[1]);
+  if (parts[0] === "projects" && parts[1]) return viewProject(parts[1]);
   if (parts[0] === "projects") return viewProjects();
   if (parts[0] === "deliveries") return viewDeliveries();
   return viewClients();
@@ -139,7 +152,7 @@ async function viewClient(id) {
     <div class="view-head" style="margin-bottom:14px"><div class="section-title" style="margin:0">Projects</div><div style="flex:1"></div><button class="btn btn-primary btn-sm" id="add-project">New project</button></div>
     <div id="p-list"></div>`);
   $("edit-client").onclick = () => clientForm(c);
-  $("add-project").onclick = () => projectForm(c);
+  $("add-project").onclick = () => projectForm({ client: c });
   renderProjects(projects || []);
 }
 function renderProjects(projects) {
@@ -152,44 +165,151 @@ function renderProjects(projects) {
   }));
 }
 function projectRow(p) {
-  return `<div class="row"><div class="title">${esc(p.title)}</div>${p.due_date ? `<span class="date">Due ${esc(p.due_date)}</span>` : ""}<div class="spacer"></div><select data-pstatus="${p.id}">${PSTATUS.map(([v, l]) => `<option value="${v}" ${p.status === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>`;
+  return `<div class="row"><div class="title"><a class="plink" href="#/projects/${p.id}">${esc(p.title)}</a></div>${p.due_date ? `<span class="date">Due ${esc(p.due_date)}</span>` : ""}<div class="spacer"></div><select data-pstatus="${p.id}">${PSTATUS.map(([v, l]) => `<option value="${v}" ${p.status === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>`;
 }
-function projectForm(client) {
-  modal(`<h3>New project</h3>
-    <p style="color:var(--muted);font-size:0.82rem;margin:-8px 0 16px">for ${esc(client.name)}</p>
-    <label class="fld"><span>Title</span><input id="pf-title" placeholder="e.g. 16 Bars Music Video" /></label>
+function projectForm({ client, project }) {
+  const p = project || {};
+  const name = client ? client.name : (p._clientName || "");
+  modal(`<h3>${project ? "Edit project" : "New project"}</h3>
+    ${name ? `<p style="color:var(--muted);font-size:0.82rem;margin:-8px 0 16px">for ${esc(name)}</p>` : ""}
+    <label class="fld"><span>Title</span><input id="pf-title" value="${escAttr(p.title || "")}" placeholder="e.g. 16 Bars Music Video" /></label>
     <label class="fld"><span>Status</span><select id="pf-status">${PSTATUS.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></label>
-    <label class="fld"><span>Due date</span><input type="date" id="pf-due" /></label>
-    <label class="fld"><span>Notes</span><textarea id="pf-desc" rows="2"></textarea></label>
-    <div class="actions"><button class="btn btn-ghost" id="pf-cancel">Cancel</button><button class="btn btn-primary" id="pf-save">Create</button></div>`);
+    <label class="fld"><span>Due date</span><input type="date" id="pf-due" value="${escAttr(p.due_date || "")}" /></label>
+    <label class="fld"><span>Notes</span><textarea id="pf-desc" rows="2">${esc(p.description || "")}</textarea></label>
+    <div class="actions">${project ? `<button class="btn btn-danger btn-sm" id="pf-del">Delete</button>` : ""}<div style="flex:1"></div><button class="btn btn-ghost" id="pf-cancel">Cancel</button><button class="btn btn-primary" id="pf-save">${project ? "Save" : "Create"}</button></div>`);
+  $("pf-status").value = p.status || "enquiry";
   $("pf-cancel").onclick = closeModal;
   $("pf-save").onclick = async () => {
     const title = val("pf-title"); if (!title) { toast("Title is required"); return; }
-    const res = await supa.from("projects").insert({ client_id: client.id, title, status: $("pf-status").value, due_date: val("pf-due") || null, description: val("pf-desc") });
+    const fields = { title, status: $("pf-status").value, due_date: val("pf-due") || null, description: val("pf-desc") };
+    if (project) {
+      const res = await supa.from("projects").update({ ...fields, updated_at: new Date().toISOString() }).eq("id", project.id);
+      if (res.error) { toast(res.error.message); return; }
+      closeModal(); toast("Saved"); viewProject(project.id);
+    } else {
+      const ins = await supa.from("projects").insert({ client_id: client.id, ...fields }).select().single();
+      if (ins.error) { toast(ins.error.message); return; }
+      // seed the standard checklist on the new project
+      await supa.from("project_steps").insert(STEP_TEMPLATE.map((label, i) => ({ project_id: ins.data.id, label, order_index: i })));
+      closeModal(); toast("Project created"); location.hash = "#/projects/" + ins.data.id;
+    }
+  };
+  if (project) $("pf-del").onclick = async () => {
+    if (!confirm("Delete this project and its checklist? This cannot be undone.")) return;
+    const res = await supa.from("projects").delete().eq("id", project.id);
     if (res.error) { toast(res.error.message); return; }
-    closeModal(); toast("Project created"); viewClient(client.id);
+    closeModal(); toast("Deleted"); location.hash = project.client_id ? "#/clients/" + project.client_id : "#/projects";
   };
 }
 
-/* ---------- all projects ---------- */
+/* ---------- project detail + checklist ---------- */
+async function viewProject(id) {
+  setActiveNav("projects");
+  setView(`<div class="empty">Loading...</div>`);
+  const { data: p } = await supa.from("projects").select("*, clients(name)").eq("id", id).single();
+  if (!p) { setView(`<div class="empty"><div class="big">Project not found</div><p><a href="#/projects">Back to projects</a></p></div>`); return; }
+  const { data: stepsRaw } = await supa.from("project_steps").select("*").eq("project_id", id).order("order_index");
+  const steps = stepsRaw || [];
+  const cname = p.clients ? p.clients.name : "";
+  const done = steps.filter((s) => s.done).length;
+  const pct = steps.length ? Math.round((done / steps.length) * 100) : 0;
+  setView(`
+    <div class="breadcrumb"><a href="#/projects">Projects</a> / ${p.client_id ? `<a href="#/clients/${p.client_id}">${esc(cname)}</a>` : esc(cname)} / ${esc(p.title)}</div>
+    <div class="detail-top"><h2>${esc(p.title)}</h2><span class="badge ${esc(p.status)}">${esc(pLabel(p.status))}</span><div style="flex:1"></div><button class="btn btn-ghost btn-sm" id="edit-proj">Edit</button></div>
+    <div class="info-rows">
+      <div><div class="k">Client</div><div class="v">${p.client_id ? `<a href="#/clients/${p.client_id}">${esc(cname)}</a>` : esc(cname) || "Not set"}</div></div>
+      <div><div class="k">Stage</div><div class="v"><select id="proj-stage" style="margin-top:2px">${PSTATUS.map(([v, l]) => `<option value="${v}" ${p.status === v ? "selected" : ""}>${l}</option>`).join("")}</select></div></div>
+      <div><div class="k">Due date</div><div class="v">${p.due_date ? esc(p.due_date) : "Not set"}</div></div>
+    </div>
+    ${p.description ? `<div class="notes-box">${esc(p.description)}</div>` : ""}
+    <div class="section-title">Checklist</div>
+    <div id="chk-wrap"></div>`);
+  $("edit-proj").onclick = () => projectForm({ project: { ...p, _clientName: cname } });
+  $("proj-stage").onchange = async (e) => {
+    const res = await supa.from("projects").update({ status: e.target.value, updated_at: new Date().toISOString() }).eq("id", id);
+    if (res.error) { toast(res.error.message); return; }
+    toast("Stage updated"); viewProject(id);
+  };
+  renderChecklist(id, steps, done, pct);
+}
+function renderChecklist(id, steps, done, pct) {
+  const wrap = $("chk-wrap");
+  const list = steps.length
+    ? `<div class="chk-progress"><div class="chk-bar"><span style="width:${pct}%"></span></div><div class="chk-count">${done} of ${steps.length} done</div></div>
+       <div class="chk-list">${steps.map((s) => `<label class="chk" data-step="${s.id}"><input type="checkbox" ${s.done ? "checked" : ""} /><span class="chk-label ${s.done ? "done" : ""}">${esc(s.label)}</span><button class="chk-del" data-del="${s.id}" title="Remove step">&times;</button></label>`).join("")}</div>`
+    : `<div class="empty" style="padding:24px 20px"><p>No steps yet.</p><button class="btn btn-primary btn-sm" id="apply-tpl" style="margin-top:12px">Add standard checklist</button></div>`;
+  wrap.innerHTML = `${list}
+    <div class="chk-add"><input id="step-new" placeholder="Add a step..." /><button class="btn btn-ghost btn-sm" id="step-add">Add</button></div>`;
+
+  wrap.querySelectorAll(".chk input").forEach((box) => (box.onchange = async () => {
+    const sid = box.closest("[data-step]").dataset.step;
+    const res = await supa.from("project_steps").update({ done: box.checked, done_at: box.checked ? new Date().toISOString() : null }).eq("id", sid);
+    if (res.error) { toast(res.error.message); return; }
+    viewProject(id);
+  }));
+  wrap.querySelectorAll("[data-del]").forEach((b) => (b.onclick = async (e) => {
+    e.preventDefault();
+    const res = await supa.from("project_steps").delete().eq("id", b.dataset.del);
+    if (res.error) { toast(res.error.message); return; }
+    toast("Step removed"); viewProject(id);
+  }));
+  const applyBtn = $("apply-tpl");
+  if (applyBtn) applyBtn.onclick = async () => {
+    const res = await supa.from("project_steps").insert(STEP_TEMPLATE.map((label, i) => ({ project_id: id, label, order_index: i })));
+    if (res.error) { toast(res.error.message); return; }
+    toast("Checklist added"); viewProject(id);
+  };
+  const addStep = async () => {
+    const label = val("step-new"); if (!label) return;
+    const res = await supa.from("project_steps").insert({ project_id: id, label, order_index: steps.length });
+    if (res.error) { toast(res.error.message); return; }
+    viewProject(id);
+  };
+  $("step-add").onclick = addStep;
+  $("step-new").onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); addStep(); } };
+}
+
+/* ---------- all projects: board + list ---------- */
 let ALLPROJECTS = [];
+let STEPCOUNTS = {};
+let projView = "board";
 async function viewProjects() {
-  setView(`<div class="view-head"><h2>Projects</h2></div>
-    <div class="toolbar"><select id="pa-status"><option value="">All status</option>${PSTATUS.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></div>
+  setView(`<div class="view-head"><h2>Projects</h2><div class="spacer"></div>
+      <div class="seg" id="proj-seg"><button data-v="board" class="${projView === "board" ? "on" : ""}">Board</button><button data-v="list" class="${projView === "list" ? "on" : ""}">List</button></div>
+    </div>
+    <div class="toolbar" id="pa-toolbar"><select id="pa-status"><option value="">All status</option>${PSTATUS.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></div>
     <div id="pa-list"><div class="empty">Loading...</div></div>`);
+  $("proj-seg").querySelectorAll("button").forEach((b) => (b.onclick = () => { projView = b.dataset.v; viewProjects(); }));
   const { data, error } = await supa.from("projects").select("*, clients(name)").order("created_at", { ascending: false });
   if (error) { $("pa-list").innerHTML = `<div class="empty"><div class="big">Couldn't load</div><p>${esc(error.message)}</p></div>`; return; }
   ALLPROJECTS = data || [];
-  $("pa-status").onchange = renderAllProjects;
-  renderAllProjects();
+  const { data: sc } = await supa.from("project_steps").select("project_id, done");
+  STEPCOUNTS = {};
+  (sc || []).forEach((s) => { const e = STEPCOUNTS[s.project_id] || (STEPCOUNTS[s.project_id] = { done: 0, total: 0 }); e.total++; if (s.done) e.done++; });
+  if ($("pa-status")) $("pa-status").onchange = renderProjectsView;
+  renderProjectsView();
 }
-function renderAllProjects() {
-  const st = $("pa-status") ? $("pa-status").value : "";
-  const rows = ALLPROJECTS.filter((p) => !st || p.status === st);
+function stepBadge(pid) {
+  const c = STEPCOUNTS[pid];
+  return c ? ` <span class="pstep">${c.done}/${c.total}</span>` : "";
+}
+function renderProjectsView() {
+  const tb = $("pa-toolbar"); if (tb) tb.style.display = projView === "list" ? "flex" : "none";
   const list = $("pa-list");
-  if (!rows.length) { list.innerHTML = `<div class="empty"><div class="big">No projects</div><p>Projects you add to clients appear here.</p></div>`; return; }
-  list.innerHTML = `<div class="rows">${rows.map((p) => `<div class="row" data-cid="${p.client_id || ""}"><div class="title">${esc(p.title)}</div><span class="date">${esc(p.clients ? p.clients.name : "")}</span><div class="spacer"></div><span class="badge ${esc(p.status)}">${esc(pLabel(p.status))}</span></div>`).join("")}</div>`;
-  list.querySelectorAll(".row").forEach((r) => { r.style.cursor = "pointer"; r.onclick = () => { if (r.dataset.cid) location.hash = "#/clients/" + r.dataset.cid; }; });
+  if (!ALLPROJECTS.length) { list.innerHTML = `<div class="empty"><div class="big">No projects</div><p>Projects you add to clients appear here.</p></div>`; return; }
+  if (projView === "board") {
+    list.innerHTML = `<div class="board">${PSTATUS.map(([v, l]) => {
+      const col = ALLPROJECTS.filter((p) => p.status === v);
+      return `<div class="board-col"><h4>${esc(l)} <span class="n">${col.length}</span></h4>${col.map((p) => `<div class="board-card" data-pid="${p.id}"><div class="t">${esc(p.title)}${stepBadge(p.id)}</div><div class="c">${esc(p.clients ? p.clients.name : "")}</div></div>`).join("")}</div>`;
+    }).join("")}</div>`;
+    list.querySelectorAll("[data-pid]").forEach((el) => (el.onclick = () => (location.hash = "#/projects/" + el.dataset.pid)));
+  } else {
+    const st = $("pa-status") ? $("pa-status").value : "";
+    const rows = ALLPROJECTS.filter((p) => !st || p.status === st);
+    if (!rows.length) { list.innerHTML = `<div class="empty"><div class="big">No matches</div><p>Try another stage.</p></div>`; return; }
+    list.innerHTML = `<div class="rows">${rows.map((p) => `<div class="row" data-pid="${p.id}"><div class="title">${esc(p.title)}${stepBadge(p.id)}</div><span class="date">${esc(p.clients ? p.clients.name : "")}</span><div class="spacer"></div><span class="badge ${esc(p.status)}">${esc(pLabel(p.status))}</span></div>`).join("")}</div>`;
+    list.querySelectorAll(".row").forEach((r) => { r.style.cursor = "pointer"; r.onclick = () => (location.hash = "#/projects/" + r.dataset.pid); });
+  }
 }
 
 /* ---------- deliveries (next phase) ---------- */
