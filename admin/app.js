@@ -384,6 +384,33 @@ async function viewProject(id) {
   loadDeliveries(id, primaryName);
 }
 
+function renderCalendar() {
+  const list = $("pa-list");
+  if (!CAL_MONTH) CAL_MONTH = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const base = CAL_MONTH, year = base.getFullYear(), month = base.getMonth();
+  const pad = (n) => (n < 10 ? "0" + n : "" + n);
+  const startDow = (new Date(year, month, 1).getDay() + 6) % 7; // Monday-first
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthName = base.toLocaleDateString("en-ZA", { month: "long", year: "numeric" });
+  const byDate = {}, noDate = [];
+  ALLPROJECTS.forEach((p) => { if (p.due_date) (byDate[p.due_date] || (byDate[p.due_date] = [])).push(p); else noDate.push(p); });
+  const t = isoDate(today0());
+  let cells = "";
+  for (let i = 0; i < startDow; i++) cells += '<div class="cal-cell cal-blank"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = year + "-" + pad(month + 1) + "-" + pad(d);
+    const items = byDate[ds] || [];
+    cells += `<div class="cal-cell${ds === t ? " cal-today" : ""}"><div class="cal-d">${d}</div>${items.map((p) => `<button class="cal-ev" data-pid="${p.id}" style="border-left:3px solid ${stColor(p.status)}" title="${escAttr(p.title)}">${esc(p.title)}</button>`).join("")}</div>`;
+  }
+  list.innerHTML = `<div class="cal-head"><button class="btn btn-ghost btn-sm" id="cal-prev">Prev</button><div class="cal-title">${esc(monthName)}</div><button class="btn btn-ghost btn-sm" id="cal-next">Next</button></div>
+    <div class="cal-grid-head">${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((x) => `<div>${x}</div>`).join("")}</div>
+    <div class="cal-grid">${cells}</div>
+    ${noDate.length ? `<div class="section-title">No deadline</div><div class="rows">${noDate.map((p) => `<div class="row" data-pid="${p.id}" style="border-left:3px solid ${stColor(p.status)}"><div class="title">${esc(p.title)}</div><span class="date">${esc(clientNames(p))}</span><div class="spacer"></div>${stageBadge(p.status)}</div>`).join("")}</div>` : ""}`;
+  $("cal-prev").onclick = () => { CAL_MONTH = new Date(year, month - 1, 1); renderProjectsView(); };
+  $("cal-next").onclick = () => { CAL_MONTH = new Date(year, month + 1, 1); renderProjectsView(); };
+  list.querySelectorAll("[data-pid]").forEach((el) => (el.onclick = () => (location.hash = "#/projects/" + el.dataset.pid)));
+}
+
 /* ---------- deliveries on a project ---------- */
 async function loadDeliveries(projectId, clientName) {
   const box = $("dlv-list"); if (!box) return;
@@ -532,10 +559,11 @@ function renderChecklist(id, steps, done, pct) {
 let ALLPROJECTS = [];
 let STEPCOUNTS = {};
 let projView = "board";
+let CAL_MONTH = null;
 async function viewProjects() {
   setView(`<div class="view-head"><h2>Projects</h2><div class="spacer"></div>
       <button class="btn btn-primary btn-sm" id="add-project">New project</button>
-      <div class="seg" id="proj-seg"><button data-v="board" class="${projView === "board" ? "on" : ""}">Board</button><button data-v="list" class="${projView === "list" ? "on" : ""}">List</button></div>
+      <div class="seg" id="proj-seg"><button data-v="board" class="${projView === "board" ? "on" : ""}">Board</button><button data-v="list" class="${projView === "list" ? "on" : ""}">List</button><button data-v="calendar" class="${projView === "calendar" ? "on" : ""}">Calendar</button></div>
     </div>
     <div class="toolbar" id="pa-toolbar"><select id="pa-status"><option value="">All stages</option>${PSTATUS.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></div>
     <div id="pa-list"><div class="empty">Loading...</div></div>`);
@@ -558,6 +586,7 @@ function stepBadge(pid) {
 function renderProjectsView() {
   const tb = $("pa-toolbar"); if (tb) tb.style.display = projView === "list" ? "flex" : "none";
   const list = $("pa-list");
+  if (projView === "calendar") return renderCalendar();
   if (!ALLPROJECTS.length) { list.innerHTML = `<div class="empty"><div class="big">No projects</div><p>Add your first project with the button above.</p></div>`; return; }
   if (projView === "board") {
     list.innerHTML = `<div class="board">${PSTATUS.map(([v, l]) => {
@@ -776,7 +805,7 @@ function wirePriority(wrap) {
   }));
   wrap.querySelectorAll("[data-golink]").forEach((b) => (b.onclick = () => {
     const [lt, lid] = b.dataset.golink.split(":");
-    if (lt === "project" && lid) location.hash = "#/projects/" + lid;
+    if ((lt === "project" || lt === "task") && lid) location.hash = "#/projects/" + lid;
     else if (lt === "client" && lid) location.hash = "#/clients/" + lid;
     else location.hash = "#/onboarding";
   }));
@@ -792,32 +821,103 @@ async function moveItem(idx, dir) {
   arr.forEach((it, i) => (it.rank = i));
   await Promise.all(updates);
 }
+// quick-create helpers (used by Priority GO so it can create + link in one go)
+async function createProjectQuick(clientId, title) {
+  const ins = await supa.from("projects").insert({ client_id: clientId, title, status: "enquiry" }).select().single();
+  if (ins.error) return { error: ins.error };
+  await supa.from("project_clients").insert([{ project_id: ins.data.id, client_id: clientId }]);
+  await supa.from("project_steps").insert(STEP_TEMPLATE.map((label, i) => ({ project_id: ins.data.id, label, order_index: i })));
+  return { id: ins.data.id };
+}
+async function createClientQuick(name) {
+  const u = (await supa.auth.getUser()).data.user;
+  const ins = await supa.from("clients").insert({ name, type: "artist", status: "active", created_by: u ? u.id : null }).select().single();
+  return ins.error ? { error: ins.error } : { id: ins.data.id };
+}
+async function createLeadQuick(name, source) {
+  const u = (await supa.auth.getUser()).data.user;
+  const ins = await supa.from("clients").insert({ name, type: "artist", status: "lead", source: source || "other", enquiry_date: isoDate(today0()), created_by: u ? u.id : null }).select().single();
+  if (ins.error) return { error: ins.error };
+  const base = today0();
+  const rows = followupPlan(name).map((p) => { const d = new Date(base); d.setDate(d.getDate() + p.offset); return { client_id: ins.data.id, kind: "lead_nudge", label: p.label, due_date: isoDate(d), draft_message: p.msg, status: "pending" }; });
+  await supa.from("follow_ups").insert(rows);
+  return { id: ins.data.id };
+}
+async function renderLinkBox(type, it) {
+  const box = $("pi-linkbox"); if (!box) return;
+  if (!type) { box.innerHTML = ""; return; }
+  box.innerHTML = `<div class="cli-hint" style="margin-bottom:10px">Loading...</div>`;
+  const preId = it && it.link_id;
+  const toggleNew = () => { const nb = $("pi-newbox"); if (nb) nb.style.display = $("pi-pick").value === "__new__" ? "block" : "none"; };
+  if (type === "project") {
+    const projs = (await supa.from("projects").select("id,title").order("created_at", { ascending: false })).data || [];
+    const clients = (await supa.from("clients").select("id,name").order("name")).data || [];
+    box.innerHTML = `<label class="fld"><span>Project</span><select id="pi-pick"><option value="__new__">+ New project</option>${projs.map((p) => `<option value="${p.id}" ${preId === p.id ? "selected" : ""}>${esc(p.title)}</option>`).join("")}</select></label>
+      <div id="pi-newbox" class="pi-newbox"><label class="fld"><span>New project title</span><input id="pi-ntitle" placeholder="e.g. Album Promo Reel" /></label><label class="fld"><span>For client</span><select id="pi-nclient">${clients.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></label></div>`;
+    $("pi-pick").onchange = toggleNew; toggleNew();
+  } else if (type === "client") {
+    const clients = (await supa.from("clients").select("id,name").order("name")).data || [];
+    box.innerHTML = `<label class="fld"><span>Client</span><select id="pi-pick"><option value="__new__">+ New client</option>${clients.map((c) => `<option value="${c.id}" ${preId === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></label>
+      <div id="pi-newbox" class="pi-newbox"><label class="fld"><span>New client name</span><input id="pi-nname" placeholder="Client or artist name" /></label></div>`;
+    $("pi-pick").onchange = toggleNew; toggleNew();
+  } else if (type === "enquiry") {
+    const leads = (await supa.from("clients").select("id,name").eq("status", "lead").order("name")).data || [];
+    box.innerHTML = `<label class="fld"><span>Enquiry</span><select id="pi-pick"><option value="__new__">+ New enquiry</option>${leads.map((c) => `<option value="${c.id}" ${preId === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></label>
+      <div id="pi-newbox" class="pi-newbox"><label class="fld"><span>New enquiry name</span><input id="pi-nname" placeholder="Client or artist name" /></label><label class="fld"><span>Came in via</span><select id="pi-nsource">${SOURCES.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></label></div>`;
+    $("pi-pick").onchange = toggleNew; toggleNew();
+  } else if (type === "task") {
+    const projs = (await supa.from("projects").select("id,title").order("created_at", { ascending: false })).data || [];
+    box.innerHTML = `<label class="fld"><span>In project</span><select id="pi-taskproj">${projs.map((p) => `<option value="${p.id}">${esc(p.title)}</option>`).join("")}</select></label>
+      <label class="fld"><span>Task</span><select id="pi-taskstep"></select></label>
+      <div id="pi-newbox" class="pi-newbox"><label class="fld"><span>New task</span><input id="pi-nstep" placeholder="e.g. Colour grade the intro" /></label></div>`;
+    const toggleStepNew = () => { const nb = $("pi-newbox"); if (nb) nb.style.display = $("pi-taskstep").value === "__new__" ? "block" : "none"; };
+    const loadSteps = async () => {
+      const pid = $("pi-taskproj").value;
+      const steps = pid ? ((await supa.from("project_steps").select("id,label").eq("project_id", pid).order("order_index")).data || []) : [];
+      $("pi-taskstep").innerHTML = `<option value="__new__">+ New task</option>${steps.map((s) => `<option value="${s.id}">${esc(s.label)}</option>`).join("")}`;
+      toggleStepNew();
+    };
+    $("pi-taskproj").onchange = loadSteps;
+    $("pi-taskstep").onchange = toggleStepNew;
+    await loadSteps();
+  }
+}
 async function priorityForm(item) {
   const it = item || {};
   modal(`<h3>${item ? "Edit item" : "New priority"}</h3>
     <label class="fld"><span>What needs doing?</span><input id="pi-title" value="${escAttr(it.title || "")}" placeholder="e.g. Send Beezlo Boys the final cut" /></label>
-    <label class="fld"><span>Link to (optional)</span><select id="pi-ltype"><option value="">Nothing</option><option value="project">Project</option><option value="client">Client</option><option value="enquiry">Enquiry</option></select></label>
-    <label class="fld" id="pi-lwrap" style="display:none"><span>Which one?</span><select id="pi-lid"></select></label>
+    <label class="fld"><span>Link to (optional)</span><select id="pi-ltype"><option value="">Nothing</option><option value="project">Project</option><option value="client">Client</option><option value="enquiry">Enquiry</option><option value="task">Task in a project</option></select></label>
+    <div id="pi-linkbox"></div>
     <label class="fld"><span>Due date (optional)</span><input type="date" id="pi-due" value="${escAttr(it.due_date || "")}" /></label>
     <div class="actions">${item ? `<button class="btn btn-danger btn-sm" id="pi-del">Delete</button>` : ""}<div style="flex:1"></div><button class="btn btn-ghost" id="pi-cancel">Cancel</button><button class="btn btn-primary" id="pi-save">Save</button></div>`);
   $("pi-cancel").onclick = closeModal;
-  const loadOptions = async (type, selId) => {
-    let rows = [];
-    if (type === "project") rows = ((await supa.from("projects").select("id,title").order("created_at", { ascending: false })).data || []).map((r) => [r.id, r.title]);
-    else if (type === "client") rows = ((await supa.from("clients").select("id,name").order("name")).data || []).map((r) => [r.id, r.name]);
-    else if (type === "enquiry") rows = ((await supa.from("clients").select("id,name").eq("status", "lead").order("name")).data || []).map((r) => [r.id, r.name]);
-    $("pi-lid").innerHTML = rows.map(([v, l]) => `<option value="${escAttr(v)}" ${selId === v ? "selected" : ""}>${esc(l)}</option>`).join("") || `<option value="">None found</option>`;
-  };
-  $("pi-ltype").onchange = async () => {
-    const t = $("pi-ltype").value;
-    $("pi-lwrap").style.display = t ? "block" : "none";
-    if (t) await loadOptions(t);
-  };
-  if (it.link_type) { $("pi-ltype").value = it.link_type; $("pi-lwrap").style.display = "block"; await loadOptions(it.link_type, it.link_id); }
+  $("pi-ltype").onchange = () => renderLinkBox($("pi-ltype").value);
+  if (it.link_type) { $("pi-ltype").value = it.link_type; await renderLinkBox(it.link_type, it); }
+  const pickLabel = (id) => { const e = $(id); return e ? (e.options[e.selectedIndex] || {}).text || "" : ""; };
   $("pi-save").onclick = async () => {
     const title = val("pi-title"); if (!title) { toast("Add a title"); return; }
-    const lt = $("pi-ltype").value;
-    const payload = { title, due_date: val("pi-due") || null, link_type: lt || null, link_id: lt ? ($("pi-lid").value || null) : null, link_label: lt ? ($("pi-lid").options[$("pi-lid").selectedIndex] || {}).text || null : null };
+    const type = $("pi-ltype").value;
+    let link_type = null, link_id = null, link_label = null;
+    if (type === "project") {
+      if ($("pi-pick").value === "__new__") {
+        const nt = val("pi-ntitle"); if (!nt) { toast("New project needs a title"); return; }
+        const r = await createProjectQuick($("pi-nclient").value, nt); if (r.error) { toast(r.error.message); return; }
+        link_type = "project"; link_id = r.id; link_label = nt;
+      } else { link_type = "project"; link_id = $("pi-pick").value; link_label = pickLabel("pi-pick"); }
+    } else if (type === "client") {
+      if ($("pi-pick").value === "__new__") { const nn = val("pi-nname"); if (!nn) { toast("Name?"); return; } const r = await createClientQuick(nn); if (r.error) { toast(r.error.message); return; } link_type = "client"; link_id = r.id; link_label = nn; }
+      else { link_type = "client"; link_id = $("pi-pick").value; link_label = pickLabel("pi-pick"); }
+    } else if (type === "enquiry") {
+      if ($("pi-pick").value === "__new__") { const nn = val("pi-nname"); if (!nn) { toast("Name?"); return; } const r = await createLeadQuick(nn, $("pi-nsource").value); if (r.error) { toast(r.error.message); return; } link_type = "enquiry"; link_id = r.id; link_label = nn; }
+      else { link_type = "enquiry"; link_id = $("pi-pick").value; link_label = pickLabel("pi-pick"); }
+    } else if (type === "task") {
+      const pid = $("pi-taskproj").value; const ptitle = pickLabel("pi-taskproj");
+      let stepLabel;
+      if ($("pi-taskstep").value === "__new__") { const ns = val("pi-nstep"); if (!ns) { toast("Task?"); return; } const si = await supa.from("project_steps").insert({ project_id: pid, label: ns, order_index: 999 }).select().single(); if (si.error) { toast(si.error.message); return; } stepLabel = ns; }
+      else stepLabel = pickLabel("pi-taskstep");
+      link_type = "task"; link_id = pid; link_label = ptitle + ": " + stepLabel;
+    }
+    const payload = { title, due_date: val("pi-due") || null, link_type, link_id, link_label };
     let res;
     if (item) res = await supa.from("priority_items").update(payload).eq("id", item.id);
     else res = await supa.from("priority_items").insert({ ...payload, rank: PRIO.length });

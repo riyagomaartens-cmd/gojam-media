@@ -206,6 +206,25 @@ label.fld span { display: block; font-size: 0.8rem; color: var(--muted); margin-
 .pr-actions .btn { padding: 5px 11px; font-size: 0.76rem; }
 .pr-actions .btn[disabled] { opacity: 0.35; pointer-events: none; }
 .row .pr-due, .row .pr-link { vertical-align: middle; margin-left: 6px; }
+.pi-newbox { display: none; border-left: 2px solid var(--accent-1); padding-left: 14px; margin: 2px 0 8px; }
+
+/* ---------- projects calendar ---------- */
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.cal-title { font-family: var(--font-display); font-weight: 400; font-size: 1.35rem; letter-spacing: 0.02em; }
+.cal-grid-head { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 6px; }
+.cal-grid-head div { text-align: center; color: var(--muted-2); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cal-cell { min-height: 92px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.cal-cell.cal-blank { background: transparent; border: none; }
+.cal-cell.cal-today { border-color: var(--accent-1); }
+.cal-d { font-size: 0.74rem; color: var(--muted-2); }
+.cal-today .cal-d { color: var(--accent-1); }
+.cal-ev { text-align: left; font-family: inherit; font-size: 0.72rem; color: var(--text); background: var(--surface-2); border: none; border-radius: 5px; padding: 4px 6px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-ev:hover { background: var(--border); }
+@media (max-width: 640px) {
+  .cal-cell { min-height: 64px; padding: 4px; }
+  .cal-ev { font-size: 0.64rem; padding: 2px 4px; }
+}
 
 /* ---------- onboarding ---------- */
 .ob-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
