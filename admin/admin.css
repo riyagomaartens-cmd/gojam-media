@@ -190,6 +190,21 @@ label.fld span { display: block; font-size: 0.8rem; color: var(--muted); margin-
 .dash-stage .ds-n { display: block; font-family: var(--font-display); font-size: 1.5rem; line-height: 1; }
 .dash-stage .ds-l { display: block; color: var(--muted-2); font-size: 0.72rem; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
 
+/* ---------- project money + time ---------- */
+.money-grid { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-bottom: 14px; }
+.money-grid .fld { margin-bottom: 0; min-width: 150px; flex: 1; }
+.money-grid .fld input { width: 100%; }
+.money-stat { min-width: 120px; }
+.money-stat .k { color: var(--muted-2); font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.money-stat .v { font-family: var(--font-display); font-weight: 400; font-size: 1.5rem; margin-top: 2px; }
+.doc-rows { display: flex; flex-direction: column; gap: 10px; }
+.doc-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; }
+.doc-label { font-size: 0.85rem; min-width: 70px; color: var(--muted); }
+.doc-name { font-size: 0.82rem; color: var(--accent-1); flex: 1; min-width: 100px; word-break: break-all; }
+.doc-up { position: relative; overflow: hidden; }
+.timer-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.timer-disp { font-family: var(--font-display); font-weight: 400; font-size: 2rem; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+
 /* ---------- Priority GO ---------- */
 .pr-eyebrow { font-family: var(--font-display); font-weight: 400; font-size: 1.9rem; letter-spacing: 0.03em; background: var(--accent-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .pr-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 26px; }

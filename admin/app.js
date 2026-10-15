@@ -53,7 +53,8 @@ const esc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</
 const escAttr = (s) => esc(s).replace(/"/g, "&quot;");
 const cap = (s) => { s = String(s || ""); return s.charAt(0).toUpperCase() + s.slice(1); };
 const val = (id) => { const e = $(id); return e ? e.value.trim() : ""; };
-const setView = (html) => { $("view").innerHTML = html; window.scrollTo(0, 0); };
+let TIMER_INT = null;
+const setView = (html) => { if (TIMER_INT) { clearInterval(TIMER_INT); TIMER_INT = null; } $("view").innerHTML = html; window.scrollTo(0, 0); };
 const setActiveNav = (name) => {
   document.querySelectorAll("#nav a").forEach((a) => a.classList.toggle("active", a.dataset.nav === name));
   const brand = document.querySelector(".brand"); if (brand) brand.classList.toggle("active", name === "priority");
@@ -146,11 +147,22 @@ async function viewDashboard() {
   const overdue = dueList.filter((f) => f.due_date < t).length;
   const dueToday = dueList.filter((f) => f.due_date === t).length;
 
+  let invoiced = 0, totalMin = 0, haveFin = false;
+  const finRes = await supa.from("projects").select("amount_charged");
+  if (!finRes.error) { haveFin = true; (finRes.data || []).forEach((r) => (invoiced += Number(r.amount_charged) || 0)); }
+  const tRes = await supa.from("time_entries").select("minutes");
+  if (!tRes.error) (tRes.data || []).forEach((r) => (totalMin += Number(r.minutes) || 0));
+  const avgRate = (haveFin && invoiced > 0 && totalMin > 0) ? Math.round(invoiced / (totalMin / 60)) : null;
+
   let h = '<div class="dash-cards">';
   h += dashCard("#/clients", cCount("active"), "Active clients");
   h += dashCard("#/onboarding", cCount("lead"), "Open enquiries", overdue ? overdue + " overdue" : (dueToday ? dueToday + " due today" : ""), overdue ? "bad" : (dueToday ? "warn" : ""));
   h += dashCard("#/projects", inProd, "In production");
   h += dashCard("#/projects", stageCount("delivered"), "Delivered");
+  if (haveFin) {
+    h += dashCard("#/projects", "R " + Math.round(invoiced), "Invoiced");
+    h += dashCard("#/projects", avgRate != null ? "R " + avgRate : "n/a", "Avg / hour");
+  }
   h += '</div>';
 
   h += '<div class="section-title">Pipeline</div><div class="dash-pipe">';
@@ -367,6 +379,10 @@ async function viewProject(id) {
       <div><div class="k">Due date</div><div class="v">${p.due_date ? esc(p.due_date) : "Not set"}</div></div>
     </div>
     ${p.description ? `<div class="notes-box">${esc(p.description)}</div>` : ""}
+    <div class="section-title">Money &amp; docs</div>
+    <div id="money-wrap"></div>
+    <div class="section-title">Time</div>
+    <div id="time-wrap"></div>
     <div class="section-title">Checklist</div>
     <div id="chk-wrap"></div>
     <div class="view-head" style="margin:34px 0 14px"><div class="section-title" style="margin:0">Deliveries</div><div style="flex:1"></div><button class="btn btn-primary btn-sm" id="add-delivery">New delivery</button></div>
@@ -382,6 +398,125 @@ async function viewProject(id) {
   $("add-delivery").onclick = () => deliveryForm({ projectId: id, clientId: primaryId, projectTitle: p.title, clientName: primaryName, onDone: () => loadDeliveries(id, primaryName) });
   renderChecklist(id, steps, done, pct);
   loadDeliveries(id, primaryName);
+  const timeRes = await supa.from("time_entries").select("*").eq("project_id", id).order("created_at", { ascending: false });
+  if (timeRes.error) {
+    const note = `<div class="empty" style="padding:20px"><p>Run migrate-phase5.sql in Supabase to switch on time + money tracking.</p></div>`;
+    if ($("money-wrap")) $("money-wrap").innerHTML = note;
+    if ($("time-wrap")) $("time-wrap").innerHTML = note;
+  } else {
+    const times = timeRes.data || [];
+    const loggedMin = times.reduce((s, t) => s + (t.minutes || 0), 0);
+    renderMoney(id, p, loggedMin);
+    renderTime(id, times, loggedMin);
+  }
+}
+
+/* ---------- project money + docs ---------- */
+function renderMoney(projectId, p, loggedMin) {
+  const box = $("money-wrap"); if (!box) return;
+  const hrs = loggedMin / 60;
+  const rate = (p.amount_charged != null && hrs > 0) ? (p.amount_charged / hrs) : null;
+  box.innerHTML = `
+    <div class="money-grid">
+      <label class="fld"><span>Amount charged (R)</span><input id="m-charged" type="number" step="0.01" inputmode="decimal" value="${p.amount_charged != null ? escAttr(p.amount_charged) : ""}" /></label>
+      <label class="fld"><span>Amount paid (R)</span><input id="m-paid" type="number" step="0.01" inputmode="decimal" value="${p.amount_paid != null ? escAttr(p.amount_paid) : ""}" /></label>
+      <div class="money-stat"><div class="k">Rate / hour</div><div class="v">${rate != null ? "R " + Math.round(rate) : "n/a"}</div></div>
+      <button class="btn btn-primary btn-sm" id="m-save">Save</button>
+    </div>
+    <div class="doc-rows">${docRow("quote", "Quote", p)}${docRow("invoice", "Invoice", p)}</div>`;
+  $("m-save").onclick = async () => {
+    const charged = val("m-charged"), paid = val("m-paid");
+    const res = await supa.from("projects").update({ amount_charged: charged === "" ? null : Number(charged), amount_paid: paid === "" ? null : Number(paid), updated_at: new Date().toISOString() }).eq("id", projectId);
+    if (res.error) { toast(res.error.message); return; }
+    toast("Saved"); viewProject(projectId);
+  };
+  wireDocs(projectId, p, box);
+}
+function docRow(kind, label, p) {
+  const path = p[kind + "_path"], name = p[kind + "_name"];
+  return `<div class="doc-row"><span class="doc-label">${label}</span>${path
+    ? `<span class="doc-name">${esc(name || "file")}</span><button class="btn btn-ghost btn-sm" data-docview="${kind}">View</button><label class="btn btn-ghost btn-sm doc-up">Replace<input type="file" data-docup="${kind}" accept=".pdf,.doc,.docx" hidden /></label><button class="btn btn-danger btn-sm" data-docdel="${kind}">Remove</button>`
+    : `<label class="btn btn-ghost btn-sm doc-up">Upload ${esc(label.toLowerCase())}<input type="file" data-docup="${kind}" accept=".pdf,.doc,.docx" hidden /></label>`}</div>`;
+}
+function wireDocs(projectId, p, box) {
+  box.querySelectorAll("[data-docup]").forEach((inp) => (inp.onchange = async () => {
+    const file = inp.files[0]; if (!file) return;
+    const kind = inp.dataset.docup;
+    const ext = (file.name.split(".").pop() || "bin").toLowerCase();
+    const path = projectId + "/" + kind + "-" + Date.now() + "." + ext;
+    toast("Uploading...");
+    const up = await supa.storage.from("project-docs").upload(path, file, { upsert: true });
+    if (up.error) { toast(up.error.message); return; }
+    if (p[kind + "_path"]) { try { await supa.storage.from("project-docs").remove([p[kind + "_path"]]); } catch (e) {} }
+    const res = await supa.from("projects").update({ [kind + "_path"]: path, [kind + "_name"]: file.name }).eq("id", projectId);
+    if (res.error) { toast(res.error.message); return; }
+    toast(cap(kind) + " uploaded"); viewProject(projectId);
+  }));
+  box.querySelectorAll("[data-docview]").forEach((b) => (b.onclick = async () => {
+    const path = p[b.dataset.docview + "_path"]; if (!path) return;
+    const sg = await supa.storage.from("project-docs").createSignedUrl(path, 600);
+    if (sg.error) { toast(sg.error.message); return; }
+    window.open(sg.data.signedUrl, "_blank", "noopener");
+  }));
+  box.querySelectorAll("[data-docdel]").forEach((b) => (b.onclick = async () => {
+    const kind = b.dataset.docdel; if (!confirm("Remove this " + kind + "?")) return;
+    if (p[kind + "_path"]) { try { await supa.storage.from("project-docs").remove([p[kind + "_path"]]); } catch (e) {} }
+    const res = await supa.from("projects").update({ [kind + "_path"]: null, [kind + "_name"]: null }).eq("id", projectId);
+    if (res.error) { toast(res.error.message); return; }
+    toast("Removed"); viewProject(projectId);
+  }));
+}
+
+/* ---------- project time tracking ---------- */
+function fmtDur(min) { min = Math.round(min); const h = Math.floor(min / 60), m = min % 60; return h ? h + "h " + m + "m" : m + "m"; }
+function fmtClock(ms) { const s = Math.floor(ms / 1000); const p = (n) => (n < 10 ? "0" + n : "" + n); return p(Math.floor(s / 3600)) + ":" + p(Math.floor((s % 3600) / 60)) + ":" + p(s % 60); }
+function renderTime(projectId, times, loggedMin) {
+  const box = $("time-wrap"); if (!box) return;
+  const running = times.find((t) => t.started_at && t.minutes == null);
+  box.innerHTML = `
+    <div class="timer-row"><div class="timer-disp" id="timer-disp">${running ? "" : fmtDur(loggedMin)}</div><div class="spacer"></div><button class="btn ${running ? "btn-danger" : "btn-primary"} btn-sm" id="timer-btn">${running ? "Stop" : "Start timer"}</button><button class="btn btn-ghost btn-sm" id="timer-add">Add time</button></div>
+    <div class="rows" style="margin-top:14px">${times.map(timeEntryRow).join("")}</div>`;
+  if (running) {
+    const baseMs = loggedMin * 60000, start = new Date(running.started_at).getTime();
+    const tick = () => { const el = $("timer-disp"); if (!el) { if (TIMER_INT) { clearInterval(TIMER_INT); TIMER_INT = null; } return; } el.textContent = fmtClock(baseMs + (Date.now() - start)); };
+    tick(); TIMER_INT = setInterval(tick, 1000);
+  }
+  $("timer-btn").onclick = async () => {
+    if (running) {
+      const mins = Math.max(1, Math.round((Date.now() - new Date(running.started_at).getTime()) / 60000));
+      const res = await supa.from("time_entries").update({ minutes: mins }).eq("id", running.id);
+      if (res.error) { toast(res.error.message); return; }
+    } else {
+      const res = await supa.from("time_entries").insert({ project_id: projectId, started_at: new Date().toISOString(), minutes: null });
+      if (res.error) { toast(res.error.message); return; }
+    }
+    viewProject(projectId);
+  };
+  $("timer-add").onclick = () => timeAddForm(projectId);
+  box.querySelectorAll("[data-deltime]").forEach((b) => (b.onclick = async () => {
+    const res = await supa.from("time_entries").delete().eq("id", b.dataset.deltime);
+    if (res.error) { toast(res.error.message); return; }
+    toast("Removed"); viewProject(projectId);
+  }));
+}
+function timeEntryRow(t) {
+  const when = String(t.created_at || "").slice(0, 10);
+  const label = (t.minutes == null && t.started_at) ? "running..." : fmtDur(t.minutes || 0);
+  return `<div class="row"><div class="title">${esc(label)}${t.note ? ` <span class="dlv-sub" style="display:inline">${esc(t.note)}</span>` : ""}</div><span class="date">${esc(when)}</span><div class="spacer"></div><button class="btn btn-danger btn-sm" data-deltime="${t.id}">Delete</button></div>`;
+}
+function timeAddForm(projectId) {
+  modal(`<h3>Add time</h3>
+    <div class="money-grid"><label class="fld"><span>Hours</span><input id="t-h" type="number" min="0" value="0" /></label><label class="fld"><span>Minutes</span><input id="t-m" type="number" min="0" value="0" /></label></div>
+    <label class="fld"><span>Note (optional)</span><input id="t-note" placeholder="e.g. first edit" /></label>
+    <div class="actions"><div style="flex:1"></div><button class="btn btn-ghost" id="t-cancel">Cancel</button><button class="btn btn-primary" id="t-save">Add</button></div>`);
+  $("t-cancel").onclick = closeModal;
+  $("t-save").onclick = async () => {
+    const mins = (parseInt(val("t-h"), 10) || 0) * 60 + (parseInt(val("t-m"), 10) || 0);
+    if (mins <= 0) { toast("Enter some time"); return; }
+    const res = await supa.from("time_entries").insert({ project_id: projectId, minutes: mins, note: val("t-note") || null });
+    if (res.error) { toast(res.error.message); return; }
+    closeModal(); toast("Time added"); viewProject(projectId);
+  };
 }
 
 function renderCalendar() {
