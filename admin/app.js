@@ -94,7 +94,7 @@ function showApp(session) {
   $("login").classList.add("hidden");
   $("app").classList.remove("hidden");
   $("who").textContent = session.user.email;
-  if (!location.hash || location.hash === "#") location.hash = "#/clients";
+  if (!location.hash || location.hash === "#") location.hash = "#/dashboard";
   else router();
 }
 
@@ -110,15 +110,64 @@ $("signout").onclick = () => supa.auth.signOut();
 
 /* ---------- router ---------- */
 function router() {
-  const parts = (location.hash || "#/clients").slice(2).split("/");
-  setActiveNav(parts[0] === "projects" ? "projects" : parts[0] || "clients");
-  if (parts[0] === "clients" && parts[1]) return viewClient(parts[1]);
-  if (parts[0] === "projects" && parts[1]) return viewProject(parts[1]);
-  if (parts[0] === "projects") return viewProjects();
-  if (parts[0] === "deliveries") return viewDeliveries();
-  return viewClients();
+  const parts = (location.hash || "#/dashboard").slice(2).split("/");
+  const top = parts[0] || "dashboard";
+  setActiveNav(top);
+  if (top === "clients" && parts[1]) return viewClient(parts[1]);
+  if (top === "projects" && parts[1]) return viewProject(parts[1]);
+  if (top === "projects") return viewProjects();
+  if (top === "onboarding") return viewOnboarding();
+  if (top === "deliveries") return viewDeliveries();
+  if (top === "clients") return viewClients();
+  return viewDashboard();
 }
 window.addEventListener("hashchange", router);
+
+/* ---------- dashboard ---------- */
+async function viewDashboard() {
+  setActiveNav("dashboard");
+  setView(`<div class="view-head"><h2>Overview</h2></div><div id="dash"><div class="empty">Loading...</div></div>`);
+  const [cR, pR, fR, dR] = await Promise.all([
+    supa.from("clients").select("id,status"),
+    supa.from("projects").select("id,status"),
+    supa.from("follow_ups").select("*, clients(name)").eq("kind", "lead_nudge").eq("status", "pending"),
+    supa.from("deliveries").select("*, clients(name)").order("created_at", { ascending: false }).limit(5),
+  ]);
+  const clients = cR.data || [], projects = pR.data || [], fups = fR.data || [], delivs = dR.data || [];
+  const cCount = (s) => clients.filter((c) => c.status === s).length;
+  const stageCount = (st) => projects.filter((p) => normSt(p.status) === st).length;
+  const inProd = stageCount("planning") + stageCount("shooting") + stageCount("editing");
+  const t = isoDate(today0());
+  const dueList = fups.filter((f) => f.due_date && f.due_date <= t).sort((a, b) => String(a.due_date).localeCompare(String(b.due_date)));
+  const overdue = dueList.filter((f) => f.due_date < t).length;
+  const dueToday = dueList.filter((f) => f.due_date === t).length;
+
+  let h = '<div class="dash-cards">';
+  h += dashCard("#/clients", cCount("active"), "Active clients");
+  h += dashCard("#/onboarding", cCount("lead"), "Open enquiries", overdue ? overdue + " overdue" : (dueToday ? dueToday + " due today" : ""), overdue ? "bad" : (dueToday ? "warn" : ""));
+  h += dashCard("#/projects", inProd, "In production");
+  h += dashCard("#/projects", stageCount("delivered"), "Delivered");
+  h += '</div>';
+
+  h += '<div class="section-title">Pipeline</div><div class="dash-pipe">';
+  PSTATUS.forEach(([v, l]) => { const c = STAGE_COLOR[v]; h += `<a class="dash-stage" href="#/projects" style="border-color:${c}55"><span class="ds-n" style="color:${c}">${stageCount(v)}</span><span class="ds-l">${esc(l)}</span></a>`; });
+  h += '</div>';
+
+  h += '<div class="section-title">Needs attention</div>';
+  h += dueList.length
+    ? `<div class="rows">${dueList.slice(0, 8).map((f) => { const od = f.due_date < t; return `<div class="row" style="border-left:3px solid ${od ? "var(--red)" : "var(--accent-1)"}"><div class="title">${esc(f.clients ? f.clients.name : "Enquiry")} <span class="pstep">${esc(f.label || "Follow-up")}</span></div><span class="date">${od ? "Overdue " : "Due "}${esc(f.due_date)}</span><div class="spacer"></div><a class="btn btn-ghost btn-sm" href="#/onboarding">Open</a></div>`; }).join("")}</div>`
+    : `<div class="empty" style="padding:24px"><p>Nothing due. Every enquiry is followed up.</p></div>`;
+
+  h += '<div class="section-title">Recent deliveries</div>';
+  h += delivs.length
+    ? `<div class="rows">${delivs.map((d) => { const when = String(d.delivered_at || d.created_at || "").slice(0, 10); return `<div class="row"><div class="title">${esc(d.title || "Delivery")}${d.clients ? ` <span class="dlv-sub" style="display:inline">${esc(d.clients.name)}</span>` : ""}</div><span class="date">${esc(when)}</span><div class="spacer"></div><a class="btn btn-ghost btn-sm" href="${escAttr(d.delivery_link)}" target="_blank" rel="noopener">Open</a></div>`; }).join("")}</div>`
+    : `<div class="empty" style="padding:24px"><p>No deliveries yet.</p></div>`;
+
+  $("dash").innerHTML = h;
+}
+function dashCard(href, n, label, badge, cls) {
+  return `<a class="dash-card ${cls || ""}" href="${href}"><div class="dc-n">${n}</div><div class="dc-l">${esc(label)}</div>${badge ? `<div class="dc-b">${esc(badge)}</div>` : ""}</a>`;
+}
 
 /* ---------- clients ---------- */
 let CLIENTS = [];
@@ -512,6 +561,140 @@ function renderProjectsView() {
     list.innerHTML = `<div class="rows">${rows.map((p) => { const c = stColor(p.status); return `<div class="row" data-pid="${p.id}" style="border-color:${c}55;border-left:3px solid ${c}"><div class="title">${esc(p.title)}${stepBadge(p.id)}</div><span class="date">${esc(clientNames(p))}</span><div class="spacer"></div>${stageBadge(p.status)}</div>`; }).join("")}</div>`;
     list.querySelectorAll(".row").forEach((r) => { r.style.cursor = "pointer"; r.onclick = () => (location.hash = "#/projects/" + r.dataset.pid); });
   }
+}
+
+/* ---------- onboarding: enquiries + follow-ups ---------- */
+const SOURCES = [["whatsapp", "WhatsApp"], ["instagram", "Instagram"], ["email", "Email"], ["referral", "Referral"], ["other", "Other"]];
+const srcLabel = (s) => (SOURCES.find((x) => x[0] === s) || [s, s || "Other"])[1];
+const today0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const isoDate = (d) => { const p = (n) => (n < 10 ? "0" + n : "" + n); return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); };
+function followupPlan(name) {
+  const n = (name || "there").trim();
+  return [
+    { label: "Day 1", offset: 1, msg: "Hey " + n + ", thanks so much for reaching out to Go Jam. We're genuinely excited about what you've got in mind. When's a good time for a quick call to run through the vision and sort you a quote? We're ready to go whenever you are." },
+    { label: "Day 3", offset: 3, msg: "Hey " + n + ", just circling back on your project. Still keen to help you bring this one to life. Happy to jump on a quick call or answer anything right here. Whenever you're ready, so are we." },
+    { label: "Day 7", offset: 7, msg: "Hi " + n + ", checking in one more time. We've got space opening up soon and would love to lock your project in. Let me know if you want to move forward and we'll get the ball rolling." },
+    { label: "Day 14", offset: 14, msg: "Hey " + n + ", last nudge from us, no pressure at all. If the timing isn't right just yet, we're always ready to go when it is. Reach out whenever and we'll pick it straight up." },
+  ];
+}
+
+let LEADS = [], FUPS = {};
+async function viewOnboarding() {
+  setActiveNav("onboarding");
+  setView(`<div class="view-head"><h2>Onboarding</h2><div class="spacer"></div><button class="btn btn-primary" id="new-enquiry">New enquiry</button></div>
+    <div id="ob-summary"></div>
+    <div id="ob-list"><div class="empty">Loading...</div></div>`);
+  $("new-enquiry").onclick = () => enquiryForm();
+  const { data: leads, error } = await supa.from("clients").select("*").eq("status", "lead").order("created_at", { ascending: false });
+  if (error) { $("ob-list").innerHTML = `<div class="empty"><div class="big">Couldn't load</div><p>${esc(error.message)}</p></div>`; return; }
+  LEADS = leads || [];
+  FUPS = {};
+  if (LEADS.length) {
+    const { data: fups } = await supa.from("follow_ups").select("*").eq("kind", "lead_nudge").in("client_id", LEADS.map((l) => l.id));
+    (fups || []).forEach((f) => (FUPS[f.client_id] || (FUPS[f.client_id] = [])).push(f));
+    Object.values(FUPS).forEach((arr) => arr.sort((a, b) => String(a.due_date).localeCompare(String(b.due_date))));
+  }
+  renderOnboarding();
+}
+function fupState(f) {
+  if (f.status === "done") return "done";
+  if (f.status === "dismissed") return "dismissed";
+  if (!f.due_date) return "upcoming";
+  const t = isoDate(today0());
+  if (f.due_date < t) return "overdue";
+  if (f.due_date === t) return "due";
+  return "upcoming";
+}
+function renderOnboarding() {
+  let due = 0, overdue = 0;
+  Object.values(FUPS).forEach((arr) => arr.forEach((f) => { const s = fupState(f); if (s === "due") due++; else if (s === "overdue") overdue++; }));
+  const sum = $("ob-summary");
+  sum.innerHTML = LEADS.length
+    ? `<div class="ob-stats"><div class="ob-stat"><span class="n">${LEADS.length}</span> open ${LEADS.length === 1 ? "enquiry" : "enquiries"}</div><div class="ob-stat ${overdue ? "bad" : ""}"><span class="n">${overdue}</span> overdue</div><div class="ob-stat ${due ? "warn" : ""}"><span class="n">${due}</span> due today</div></div>`
+    : "";
+  const list = $("ob-list");
+  if (!LEADS.length) { list.innerHTML = `<div class="empty"><div class="big">No open enquiries</div><p>Log a new enquiry and we'll schedule the 1, 3, 7 and 14 day follow-ups automatically.</p></div>`; return; }
+  list.innerHTML = LEADS.map(leadCard).join("");
+  list.querySelectorAll("[data-fu]").forEach((el) => (el.onclick = () => followupModal(el.dataset.fu)));
+  list.querySelectorAll("[data-convert]").forEach((b) => (b.onclick = () => convertLead(b.dataset.convert)));
+  list.querySelectorAll("[data-lost]").forEach((b) => (b.onclick = () => markLost(b.dataset.lost)));
+  list.querySelectorAll("[data-editlead]").forEach((b) => (b.onclick = () => { const c = LEADS.find((l) => l.id === b.dataset.editlead); if (c) clientForm(c); }));
+}
+function leadCard(c) {
+  const fups = FUPS[c.id] || [];
+  const contact = [c.instagram, c.phone, c.email].filter(Boolean)[0] || "";
+  const chips = fups.map((f) => { const st = fupState(f); return `<button class="fu-chip fu-${st}" data-fu="${f.id}" title="${escAttr(f.due_date || "")}">${esc(f.label || "Follow-up")}</button>`; }).join("");
+  const since = c.enquiry_date ? esc(c.enquiry_date) : "no date";
+  return `<div class="ob-card">
+    <div class="ob-card-top">
+      <div><h3>${esc(c.name)}</h3><div class="ob-meta"><span class="badge src">${esc(srcLabel(c.source))}</span> <span class="ob-since">Enquiry ${since}</span>${contact ? ` <span class="ob-since">${esc(contact)}</span>` : ""}</div></div>
+      <div class="ob-card-actions"><button class="btn btn-ghost btn-sm" data-editlead="${c.id}">Edit</button><button class="btn btn-ghost btn-sm" data-lost="${c.id}">Lost</button><button class="btn btn-primary btn-sm" data-convert="${c.id}">Convert</button></div>
+    </div>
+    ${c.notes ? `<div class="ob-note">${esc(c.notes)}</div>` : ""}
+    <div class="fu-row">${chips || '<span class="ob-since">No follow-ups scheduled.</span>'}</div>
+  </div>`;
+}
+function findFup(id) { for (const arr of Object.values(FUPS)) { const f = arr.find((x) => x.id === id); if (f) return f; } return null; }
+function followupModal(id) {
+  const f = findFup(id); if (!f) return;
+  const lead = LEADS.find((l) => l.id === f.client_id);
+  const done = f.status === "done";
+  modal(`<h3>${esc(f.label || "Follow-up")}${lead ? " for " + esc(lead.name) : ""}</h3>
+    <p style="color:var(--muted);font-size:0.82rem;margin:-8px 0 14px">${f.due_date ? "Due " + esc(f.due_date) : ""}${lead && lead.source ? " via " + esc(srcLabel(lead.source)) : ""}</p>
+    <label class="fld"><span>Draft message (tweak before sending if you like)</span><textarea id="fu-msg" rows="5">${esc(f.draft_message || "")}</textarea></label>
+    <div class="actions"><button class="btn btn-ghost btn-sm" id="fu-copy">Copy</button><div style="flex:1"></div><button class="btn btn-ghost" id="fu-cancel">Close</button><button class="btn ${done ? "btn-ghost" : "btn-primary"}" id="fu-done">${done ? "Mark not done" : "Mark done"}</button></div>`);
+  $("fu-cancel").onclick = closeModal;
+  $("fu-copy").onclick = async () => { const ok = await copyText(val("fu-msg")); toast(ok ? "Copied" : "Copy failed"); };
+  $("fu-done").onclick = async () => {
+    const nowDone = !done;
+    const res = await supa.from("follow_ups").update({ status: nowDone ? "done" : "pending", done_at: nowDone ? new Date().toISOString() : null, draft_message: val("fu-msg") }).eq("id", f.id);
+    if (res.error) { toast(res.error.message); return; }
+    closeModal(); toast(nowDone ? "Marked done" : "Reopened"); viewOnboarding();
+  };
+}
+async function convertLead(id) {
+  const c = LEADS.find((l) => l.id === id);
+  if (!confirm("Convert " + (c ? c.name : "this enquiry") + " to an active client? Pending follow-ups are cleared.")) return;
+  await supa.from("clients").update({ status: "active", updated_at: new Date().toISOString() }).eq("id", id);
+  await supa.from("follow_ups").update({ status: "dismissed" }).eq("client_id", id).eq("kind", "lead_nudge").eq("status", "pending");
+  toast("Converted to active client"); viewOnboarding();
+}
+async function markLost(id) {
+  if (!confirm("Mark this enquiry as lost? It moves to Past and pending follow-ups are cleared.")) return;
+  await supa.from("clients").update({ status: "past", updated_at: new Date().toISOString() }).eq("id", id);
+  await supa.from("follow_ups").update({ status: "dismissed" }).eq("client_id", id).eq("kind", "lead_nudge").eq("status", "pending");
+  toast("Marked lost"); viewOnboarding();
+}
+function enquiryForm() {
+  modal(`<h3>New enquiry</h3>
+    <label class="fld"><span>Name</span><input id="e-name" placeholder="Client or artist name" /></label>
+    <label class="fld"><span>Came in via</span><select id="e-source">${SOURCES.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></label>
+    <label class="fld"><span>Contact (WhatsApp number, IG handle or email)</span><input id="e-contact" placeholder="082... / @handle / name@email.com" /></label>
+    <label class="fld"><span>Enquiry date</span><input type="date" id="e-date" /></label>
+    <label class="fld"><span>What do they want? (optional)</span><textarea id="e-note" rows="2" placeholder="e.g. music video, 2 reels, shoot in Nov"></textarea></label>
+    <div class="bld-note-sm">We'll auto-schedule follow-ups for day 1, 3, 7 and 14 with ready-to-send drafts.</div>
+    <div class="actions"><div style="flex:1"></div><button class="btn btn-ghost" id="e-cancel">Cancel</button><button class="btn btn-primary" id="e-save">Log enquiry</button></div>`);
+  $("e-date").value = isoDate(today0());
+  $("e-cancel").onclick = closeModal;
+  $("e-save").onclick = async () => {
+    const name = val("e-name"); if (!name) { toast("Name is required"); return; }
+    const source = $("e-source").value;
+    const contact = val("e-contact");
+    const edate = val("e-date") || isoDate(today0());
+    const client = { name, type: "artist", status: "lead", source, enquiry_date: edate, notes: val("e-note") };
+    if (contact) {
+      if (contact.includes("@") && contact.includes(".")) client.email = contact;
+      else if (contact.charAt(0) === "@" || source === "instagram") client.instagram = contact;
+      else client.phone = contact;
+    }
+    const u = (await supa.auth.getUser()).data.user;
+    const ins = await supa.from("clients").insert({ ...client, created_by: u ? u.id : null }).select().single();
+    if (ins.error) { toast(ins.error.message); return; }
+    const base = new Date(edate + "T00:00:00");
+    const rows = followupPlan(name).map((p) => { const d = new Date(base); d.setDate(d.getDate() + p.offset); return { client_id: ins.data.id, kind: "lead_nudge", label: p.label, due_date: isoDate(d), draft_message: p.msg, status: "pending" }; });
+    await supa.from("follow_ups").insert(rows);
+    closeModal(); toast("Enquiry logged with follow-ups"); viewOnboarding();
+  };
 }
 
 /* ---------- deliveries tab (all deliveries) ---------- */

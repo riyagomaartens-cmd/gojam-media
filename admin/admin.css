@@ -169,6 +169,48 @@ label.fld span { display: block; font-size: 0.8rem; color: var(--muted); margin-
 .tog2 input { width: 16px; height: 16px; flex: none; accent-color: var(--accent-1); cursor: pointer; }
 .dlv-sub { color: var(--muted-2); font-size: 0.78rem; margin-top: 3px; }
 
+/* ---------- dashboard ---------- */
+.dash-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 30px; }
+.dash-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: border-color 0.15s var(--ease), transform 0.15s var(--ease); }
+.dash-card:hover { border-color: #3a3a44; transform: translateY(-2px); }
+.dash-card .dc-n { font-family: var(--font-display); font-size: 2.2rem; line-height: 1; color: var(--text); }
+.dash-card .dc-l { color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
+.dash-card .dc-b { font-size: 0.74rem; margin-top: 8px; color: var(--muted-2); }
+.dash-card.warn { border-color: rgba(240,181,68,0.5); }
+.dash-card.warn .dc-b { color: var(--accent-1); }
+.dash-card.bad { border-color: rgba(229,115,122,0.5); }
+.dash-card.bad .dc-b { color: var(--red); }
+.dash-pipe { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 10px; }
+.dash-stage { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 12px; text-align: center; }
+.dash-stage:hover { transform: translateY(-2px); }
+.dash-stage .ds-n { display: block; font-family: var(--font-display); font-size: 1.5rem; line-height: 1; }
+.dash-stage .ds-l { display: block; color: var(--muted-2); font-size: 0.72rem; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ---------- onboarding ---------- */
+.ob-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.ob-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 18px; font-size: 0.85rem; color: var(--muted); }
+.ob-stat .n { font-family: var(--font-display); font-size: 1.3rem; color: var(--text); margin-right: 6px; }
+.ob-stat.warn { border-color: rgba(240,181,68,0.5); }
+.ob-stat.warn .n { color: var(--accent-1); }
+.ob-stat.bad { border-color: rgba(229,115,122,0.5); }
+.ob-stat.bad .n { color: var(--red); }
+.ob-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+.ob-card-top { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.ob-card-top h3 { font-size: 1.1rem; margin-bottom: 6px; }
+.ob-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ob-since { color: var(--muted-2); font-size: 0.8rem; }
+.badge.src { color: var(--accent-1); border-color: rgba(240,181,68,0.4); }
+.ob-card-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.ob-note { background: var(--bg-2); border-left: 3px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; color: var(--muted); font-size: 0.85rem; margin: 14px 0 0; white-space: pre-line; }
+.fu-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.fu-chip { font-family: inherit; font-size: 0.8rem; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: transform 0.12s var(--ease), border-color 0.12s var(--ease); }
+.fu-chip:hover { transform: translateY(-1px); }
+.fu-upcoming { color: var(--muted-2); }
+.fu-due { color: var(--accent-1); border-color: rgba(240,181,68,0.6); }
+.fu-overdue { color: var(--red); border-color: rgba(229,115,122,0.6); }
+.fu-done { color: var(--green); border-color: rgba(75,163,106,0.5); text-decoration: line-through; }
+.fu-dismissed { color: var(--muted-2); opacity: 0.5; text-decoration: line-through; }
+
 /* ---------- empty / loading ---------- */
 .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
 .empty .big { font-family: var(--font-display); font-weight: 400; font-size: 1.4rem; color: var(--text); margin-bottom: 8px; letter-spacing: 0.02em; }
