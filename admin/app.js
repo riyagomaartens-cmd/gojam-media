@@ -135,7 +135,7 @@ async function viewDashboard() {
   const [cR, pR, fR, dR] = await Promise.all([
     supa.from("clients").select("id,status"),
     supa.from("projects").select("id,status"),
-    supa.from("follow_ups").select("*, clients(name)").eq("kind", "lead_nudge").eq("status", "pending"),
+    supa.from("follow_ups").select("*, clients(name)").eq("status", "pending"),
     supa.from("deliveries").select("*, clients(name)").order("created_at", { ascending: false }).limit(5),
   ]);
   const clients = cR.data || [], projects = pR.data || [], fups = fR.data || [], delivs = dR.data || [];
@@ -144,8 +144,9 @@ async function viewDashboard() {
   const inProd = stageCount("planning") + stageCount("shooting") + stageCount("editing");
   const t = isoDate(today0());
   const dueList = fups.filter((f) => f.due_date && f.due_date <= t).sort((a, b) => String(a.due_date).localeCompare(String(b.due_date)));
-  const overdue = dueList.filter((f) => f.due_date < t).length;
-  const dueToday = dueList.filter((f) => f.due_date === t).length;
+  const leadDue = dueList.filter((f) => f.kind === "lead_nudge");
+  const overdue = leadDue.filter((f) => f.due_date < t).length;
+  const dueToday = leadDue.filter((f) => f.due_date === t).length;
 
   let invoiced = 0, totalMin = 0, haveFin = false;
   const finRes = await supa.from("projects").select("amount_charged");
@@ -171,8 +172,8 @@ async function viewDashboard() {
 
   h += '<div class="section-title">Needs attention</div>';
   h += dueList.length
-    ? `<div class="rows">${dueList.slice(0, 8).map((f) => { const od = f.due_date < t; return `<div class="row" style="border-left:3px solid ${od ? "var(--red)" : "var(--accent-1)"}"><div class="title">${esc(f.clients ? f.clients.name : "Enquiry")} <span class="pstep">${esc(f.label || "Follow-up")}</span></div><span class="date">${od ? "Overdue " : "Due "}${esc(f.due_date)}</span><div class="spacer"></div><a class="btn btn-ghost btn-sm" href="#/onboarding">Open</a></div>`; }).join("")}</div>`
-    : `<div class="empty" style="padding:24px"><p>Nothing due. Every enquiry is followed up.</p></div>`;
+    ? `<div class="rows">${dueList.slice(0, 10).map((f) => { const od = f.due_date < t; return `<div class="row" style="border-left:3px solid ${od ? "var(--red)" : "var(--accent-1)"}"><div class="title">${esc(f.clients ? f.clients.name : "Follow-up")} <span class="pstep">${esc(f.label || f.kind || "Follow-up")}</span></div><span class="date">${od ? "Overdue " : "Due "}${esc(f.due_date)}</span><div class="spacer"></div><button class="btn btn-ghost btn-sm" data-fuid="${f.id}">Do</button></div>`; }).join("")}</div>`
+    : `<div class="empty" style="padding:24px"><p>Nothing due. You're on top of it.</p></div>`;
 
   h += '<div class="section-title">Recent deliveries</div>';
   h += delivs.length
@@ -180,6 +181,7 @@ async function viewDashboard() {
     : `<div class="empty" style="padding:24px"><p>No deliveries yet.</p></div>`;
 
   $("dash").innerHTML = h;
+  document.querySelectorAll("#dash [data-fuid]").forEach((b) => (b.onclick = () => { const f = fups.find((x) => x.id === b.dataset.fuid); if (f) followupModal(f, f.clients ? f.clients.name : "", viewDashboard); }));
 }
 function dashCard(href, n, label, badge, cls) {
   return `<a class="dash-card ${cls || ""}" href="${href}"><div class="dc-n">${n}</div><div class="dc-l">${esc(label)}</div>${badge ? `<div class="dc-b">${esc(badge)}</div>` : ""}</a>`;
@@ -191,7 +193,7 @@ async function viewClients() {
   setView(`<div class="view-head"><h2>Clients</h2><div class="spacer"></div><button class="btn btn-primary" id="add-client">New client</button></div>
     <div class="toolbar">
       <input class="search" id="c-search" placeholder="Search clients..." />
-      <select id="c-status"><option value="">All status</option><option value="lead">Lead</option><option value="active">Active</option><option value="past">Past</option></select>
+      <select id="c-status"><option value="">All status</option><option value="__proj">With projects</option><option value="active">Active</option><option value="lead">Lead</option><option value="past">Past</option></select>
     </div>
     <div id="c-list"><div class="empty">Loading...</div></div>`);
   $("add-client").onclick = () => clientForm();
@@ -200,13 +202,25 @@ async function viewClients() {
   const { data, error } = await supa.from("clients").select("*").order("name");
   if (error) { $("c-list").innerHTML = `<div class="empty"><div class="big">Couldn't load</div><p>${esc(error.message)}</p></div>`; return; }
   CLIENTS = data || [];
+  // which clients have projects? (for sort + filter)
+  const linked = new Set();
+  const pc = await supa.from("project_clients").select("client_id");
+  if (!pc.error) (pc.data || []).forEach((r) => linked.add(r.client_id));
+  else { const pr = await supa.from("projects").select("client_id"); (pr.data || []).forEach((r) => linked.add(r.client_id)); }
+  const tier = (c) => (linked.has(c.id) ? 0 : c.status === "active" ? 1 : c.status === "lead" ? 2 : 3);
+  CLIENTS.forEach((c) => (c._hasProj = linked.has(c.id)));
+  CLIENTS.sort((a, b) => (tier(a) - tier(b)) || a.name.localeCompare(b.name));
   renderClientList();
 }
 function renderClientList() {
   if (!$("c-list")) return;
   const q = (val("c-search") || "").toLowerCase();
   const st = $("c-status") ? $("c-status").value : "";
-  const rows = CLIENTS.filter((c) => (!st || c.status === st) && (!q || c.name.toLowerCase().includes(q) || (c.instagram || "").toLowerCase().includes(q)));
+  const rows = CLIENTS.filter((c) => {
+    if (st === "__proj") { if (!c._hasProj) return false; }
+    else if (st && c.status !== st) return false;
+    return !q || c.name.toLowerCase().includes(q) || (c.instagram || "").toLowerCase().includes(q);
+  });
   const list = $("c-list");
   if (!rows.length) { list.innerHTML = `<div class="empty"><div class="big">${CLIENTS.length ? "No matches" : "No clients yet"}</div><p>${CLIENTS.length ? "Try another search." : "Add your first client to get started."}</p></div>`; return; }
   list.innerHTML = `<div class="grid">${rows.map(clientCard).join("")}</div>`;
@@ -376,12 +390,13 @@ async function viewProject(id) {
     <div class="info-rows">
       <div><div class="k">Client${cl.length > 1 ? "s" : ""}</div><div class="v">${clLinks}</div></div>
       <div><div class="k">Stage</div><div class="v"><select id="proj-stage" style="margin-top:2px">${PSTATUS.map(([v, l]) => `<option value="${v}" ${normSt(p.status) === v ? "selected" : ""}>${l}</option>`).join("")}</select></div></div>
-      <div><div class="k">Due date</div><div class="v">${p.due_date ? esc(p.due_date) : "Not set"}</div></div>
+      <div><div class="k">Due date</div><div class="v"><input type="date" id="proj-due" value="${escAttr(p.due_date || "")}" style="margin-top:2px" /></div></div>
+      <div><div class="k">Time tracked</div><div class="v" id="timer-cell" style="margin-top:2px"></div></div>
     </div>
     ${p.description ? `<div class="notes-box">${esc(p.description)}</div>` : ""}
     <div class="section-title">Money &amp; docs</div>
     <div id="money-wrap"></div>
-    <div class="section-title">Time</div>
+    <div class="section-title">Time log</div>
     <div id="time-wrap"></div>
     <div class="section-title">Checklist</div>
     <div id="chk-wrap"></div>
@@ -393,6 +408,10 @@ async function viewProject(id) {
     if (res.error) { toast(res.error.message); return; }
     toast("Stage updated"); viewProject(id);
   };
+  $("proj-due").onchange = async (e) => {
+    const res = await supa.from("projects").update({ due_date: e.target.value || null, updated_at: new Date().toISOString() }).eq("id", id);
+    toast(res.error ? res.error.message : "Due date updated");
+  };
   const primaryId = p.client_id || (cl[0] && cl[0].id) || null;
   const primaryName = (cl[0] && cl[0].name) || "";
   $("add-delivery").onclick = () => deliveryForm({ projectId: id, clientId: primaryId, projectTitle: p.title, clientName: primaryName, onDone: () => loadDeliveries(id, primaryName) });
@@ -403,11 +422,13 @@ async function viewProject(id) {
     const note = `<div class="empty" style="padding:20px"><p>Run migrate-phase5.sql in Supabase to switch on time + money tracking.</p></div>`;
     if ($("money-wrap")) $("money-wrap").innerHTML = note;
     if ($("time-wrap")) $("time-wrap").innerHTML = note;
+    if ($("timer-cell")) $("timer-cell").textContent = "n/a";
   } else {
     const times = timeRes.data || [];
     const loggedMin = times.reduce((s, t) => s + (t.minutes || 0), 0);
     renderMoney(id, p, loggedMin);
-    renderTime(id, times, loggedMin);
+    renderTimer(id, times, loggedMin);
+    renderTimeLog(id, times);
   }
 }
 
@@ -470,12 +491,10 @@ function wireDocs(projectId, p, box) {
 /* ---------- project time tracking ---------- */
 function fmtDur(min) { min = Math.round(min); const h = Math.floor(min / 60), m = min % 60; return h ? h + "h " + m + "m" : m + "m"; }
 function fmtClock(ms) { const s = Math.floor(ms / 1000); const p = (n) => (n < 10 ? "0" + n : "" + n); return p(Math.floor(s / 3600)) + ":" + p(Math.floor((s % 3600) / 60)) + ":" + p(s % 60); }
-function renderTime(projectId, times, loggedMin) {
-  const box = $("time-wrap"); if (!box) return;
+function renderTimer(projectId, times, loggedMin) {
+  const cell = $("timer-cell"); if (!cell) return;
   const running = times.find((t) => t.started_at && t.minutes == null);
-  box.innerHTML = `
-    <div class="timer-row"><div class="timer-disp" id="timer-disp">${running ? "" : fmtDur(loggedMin)}</div><div class="spacer"></div><button class="btn ${running ? "btn-danger" : "btn-primary"} btn-sm" id="timer-btn">${running ? "Stop" : "Start timer"}</button><button class="btn btn-ghost btn-sm" id="timer-add">Add time</button></div>
-    <div class="rows" style="margin-top:14px">${times.map(timeEntryRow).join("")}</div>`;
+  cell.innerHTML = `<span class="timer-disp" id="timer-disp">${running ? "" : fmtDur(loggedMin)}</span><span class="timer-ctrls"><button class="btn ${running ? "btn-danger" : "btn-primary"} btn-sm" id="timer-btn">${running ? "Stop" : "Start"}</button><button class="btn btn-ghost btn-sm" id="timer-add">Add</button></span>`;
   if (running) {
     const baseMs = loggedMin * 60000, start = new Date(running.started_at).getTime();
     const tick = () => { const el = $("timer-disp"); if (!el) { if (TIMER_INT) { clearInterval(TIMER_INT); TIMER_INT = null; } return; } el.textContent = fmtClock(baseMs + (Date.now() - start)); };
@@ -493,6 +512,10 @@ function renderTime(projectId, times, loggedMin) {
     viewProject(projectId);
   };
   $("timer-add").onclick = () => timeAddForm(projectId);
+}
+function renderTimeLog(projectId, times) {
+  const box = $("time-wrap"); if (!box) return;
+  box.innerHTML = times.length ? `<div class="rows">${times.map(timeEntryRow).join("")}</div>` : `<div class="empty" style="padding:16px"><p>No time logged yet.</p></div>`;
   box.querySelectorAll("[data-deltime]").forEach((b) => (b.onclick = async () => {
     const res = await supa.from("time_entries").delete().eq("id", b.dataset.deltime);
     if (res.error) { toast(res.error.message); return; }
@@ -648,8 +671,17 @@ async function deliveryForm({ projectId, clientId, projectTitle, clientName, pic
       portrait: !!data.portrait, delivered_at: date ? new Date(date).toISOString() : new Date().toISOString(),
     });
     if (res.error) { toast(res.error.message); return; }
+    // schedule the 3-day check-in and 21-day rebook follow-ups off the delivery date
+    if (cId) {
+      const fbase = date ? new Date(date + "T00:00:00") : new Date();
+      const mk = (off, kind, label, msg) => { const d = new Date(fbase); d.setDate(d.getDate() + off); return { client_id: cId, project_id: pId, kind, label, due_date: isoDate(d), draft_message: msg, status: "pending" }; };
+      await supa.from("follow_ups").insert([
+        mk(3, "delivery_checkin", "Delivery 3-day check-in", deliveryCheckinMsg(cName)),
+        mk(21, "delivery_rebook", "Delivery 21-day rebook", deliveryRebookMsg(cName)),
+      ]);
+    }
     const copied = await copyText(deliveryMessage(cName, title, link));
-    closeModal(); toast(copied ? "Delivery message copied, ready to send" : "Delivery created");
+    closeModal(); toast(copied ? "Delivery message copied, follow-ups scheduled" : "Delivery created");
     if (onDone) onDone();
   };
 }
@@ -759,6 +791,14 @@ function deliveryMessage(clientName, title, link) {
   const proj = title ? ' "' + title + '"' : "";
   return "Hey " + who + "! 🎬✨\n\nYour project" + proj + " is ready and we could not be happier with how it turned out! 🙌 Watch it, download it and grab everything right here:\n\n" + link + "\n\nThank you so much for trusting Go Jam with this one, it genuinely means the world to us. 💛 If you love what you see, a quick Google review helps other artists and brands find us. ⭐" + SIGN_OFF;
 }
+function deliveryCheckinMsg(name) {
+  const n = (name || "").trim() || "there";
+  return "Hey " + n + "! 👋 Just checking your delivery came through okay and that you're loving it. 😊 If there's anything you'd like tweaked or any questions at all, I'm right here. 🎬" + SIGN_OFF;
+}
+function deliveryRebookMsg(name) {
+  const n = (name || "").trim() || "there";
+  return "Hey " + n + "! 💛 It's been a few weeks since your last project with Go Jam and we'd genuinely love to create something new with you. 🎥 Another video, a shoot, or a few reels? Let's line up the next one whenever you're ready. 🚀" + SIGN_OFF;
+}
 
 let LEADS = [], FUPS = {};
 async function viewOnboarding() {
@@ -797,7 +837,7 @@ function renderOnboarding() {
   const list = $("ob-list");
   if (!LEADS.length) { list.innerHTML = `<div class="empty"><div class="big">No open enquiries</div><p>Log a new enquiry and we'll schedule the 1, 3, 7 and 14 day follow-ups automatically.</p></div>`; return; }
   list.innerHTML = LEADS.map(leadCard).join("");
-  list.querySelectorAll("[data-fu]").forEach((el) => (el.onclick = () => followupModal(el.dataset.fu)));
+  list.querySelectorAll("[data-fu]").forEach((el) => (el.onclick = () => { const f = findFup(el.dataset.fu); const lead = f && LEADS.find((l) => l.id === f.client_id); followupModal(f, lead ? lead.name : "", viewOnboarding); }));
   list.querySelectorAll("[data-convert]").forEach((b) => (b.onclick = () => convertLead(b.dataset.convert)));
   list.querySelectorAll("[data-lost]").forEach((b) => (b.onclick = () => markLost(b.dataset.lost)));
   list.querySelectorAll("[data-editlead]").forEach((b) => (b.onclick = () => { const c = LEADS.find((l) => l.id === b.dataset.editlead); if (c) clientForm(c); }));
@@ -817,21 +857,20 @@ function leadCard(c) {
   </div>`;
 }
 function findFup(id) { for (const arr of Object.values(FUPS)) { const f = arr.find((x) => x.id === id); if (f) return f; } return null; }
-function followupModal(id) {
-  const f = findFup(id); if (!f) return;
-  const lead = LEADS.find((l) => l.id === f.client_id);
+function followupModal(f, clientName, onDone) {
+  if (!f) return;
   const done = f.status === "done";
-  modal(`<h3>${esc(f.label || "Follow-up")}${lead ? " for " + esc(lead.name) : ""}</h3>
-    <p style="color:var(--muted);font-size:0.82rem;margin:-8px 0 14px">${f.due_date ? "Due " + esc(f.due_date) : ""}${lead && lead.source ? " via " + esc(srcLabel(lead.source)) : ""}</p>
-    <label class="fld"><span>Draft message (tweak before sending if you like)</span><textarea id="fu-msg" rows="5">${esc(f.draft_message || "")}</textarea></label>
-    <div class="actions"><button class="btn btn-ghost btn-sm" id="fu-copy">Copy</button><div style="flex:1"></div><button class="btn btn-ghost" id="fu-cancel">Close</button><button class="btn ${done ? "btn-ghost" : "btn-primary"}" id="fu-done">${done ? "Mark not done" : "Mark done"}</button></div>`);
+  modal(`<h3>${esc(f.label || "Follow-up")}${clientName ? " for " + esc(clientName) : ""}</h3>
+    <p style="color:var(--muted);font-size:0.82rem;margin:-8px 0 14px">${f.due_date ? "Due " + esc(f.due_date) : ""}</p>
+    <label class="fld"><span>Draft message (tweak before sending if you like)</span><textarea id="fu-msg" rows="6">${esc(f.draft_message || "")}</textarea></label>
+    <div class="actions"><button class="btn btn-ghost btn-sm" id="fu-copy">Copy</button><div style="flex:1"></div><button class="btn btn-ghost" id="fu-cancel">Close</button><button class="btn ${done ? "btn-ghost" : "btn-primary"}" id="fu-done">${done ? "Mark not done" : "Mark sent"}</button></div>`);
   $("fu-cancel").onclick = closeModal;
   $("fu-copy").onclick = async () => { const ok = await copyText(val("fu-msg")); toast(ok ? "Copied" : "Copy failed"); };
   $("fu-done").onclick = async () => {
     const nowDone = !done;
     const res = await supa.from("follow_ups").update({ status: nowDone ? "done" : "pending", done_at: nowDone ? new Date().toISOString() : null, draft_message: val("fu-msg") }).eq("id", f.id);
     if (res.error) { toast(res.error.message); return; }
-    closeModal(); toast(nowDone ? "Marked done" : "Reopened"); viewOnboarding();
+    closeModal(); toast(nowDone ? "Marked done" : "Reopened"); if (onDone) onDone();
   };
 }
 async function convertLead(id) {

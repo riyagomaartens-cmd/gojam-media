@@ -23,7 +23,14 @@
   --blue: #6ea8d8;
 }
 * , *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: var(--font-body); background: var(--bg); color: var(--text); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font-body); background: linear-gradient(180deg, #0c0c0f 0%, #09090a 100%); color: var(--text); line-height: 1.5; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(55vw 45vh at 12% -8%, rgba(240,181,68,0.11), transparent 60%),
+    radial-gradient(50vw 45vh at 98% 6%, rgba(217,123,43,0.09), transparent 55%),
+    radial-gradient(70vw 55vh at 50% 112%, rgba(240,181,68,0.06), transparent 60%);
+}
 a { color: var(--accent-1); text-decoration: none; }
 button { font-family: inherit; cursor: pointer; }
 .hidden { display: none !important; }
@@ -202,8 +209,10 @@ label.fld span { display: block; font-size: 0.8rem; color: var(--muted); margin-
 .doc-label { font-size: 0.85rem; min-width: 70px; color: var(--muted); }
 .doc-name { font-size: 0.82rem; color: var(--accent-1); flex: 1; min-width: 100px; word-break: break-all; }
 .doc-up { position: relative; overflow: hidden; }
-.timer-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.timer-disp { font-family: var(--font-display); font-weight: 400; font-size: 2rem; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+#timer-cell { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.timer-disp { font-family: var(--font-display); font-weight: 400; font-size: 1.45rem; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.timer-ctrls { display: inline-flex; gap: 6px; }
+.timer-ctrls .btn { padding: 4px 11px; font-size: 0.74rem; }
 
 /* ---------- Priority GO ---------- */
 .pr-eyebrow { font-family: var(--font-display); font-weight: 400; font-size: 1.9rem; letter-spacing: 0.03em; background: var(--accent-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
