@@ -26,11 +26,17 @@
 
       <div class="field">
         <label for="f-client">Client name</label>
-        <input type="text" id="f-client" placeholder="e.g. Beezlo Boys" />
+        <input type="text" id="f-client" placeholder="e.g. Beezlo Boys" list="dl-clients" autocomplete="off" />
+        <datalist id="dl-clients"></datalist>
+        <div class="hint" id="client-hint" style="display:none">Pick from your list, or type a new name to add the client.</div>
       </div>
       <div class="field">
         <label for="f-title">Project title</label>
         <input type="text" id="f-title" placeholder="e.g. 16 Bars Official Music Video" />
+      </div>
+      <div class="field" id="project-field" style="display:none">
+        <label for="f-project">Link to a project (optional)</label>
+        <select id="f-project"><option value="">None</option></select>
       </div>
       <div class="field">
         <label for="f-date">Delivery date</label>
@@ -71,6 +77,7 @@
           <button class="btn btn-ghost" id="copy">Copy</button>
         </div>
         <a class="btn btn-ghost" id="preview" target="_blank" rel="noopener">Preview it</a>
+        <div class="hint" id="saved-note" style="margin-top:10px"></div>
       </div>
     </div>
   </main>
@@ -153,6 +160,74 @@
       this.textContent = "Copied!";
       var self = this;
       setTimeout(function () { self.textContent = "Copy"; }, 1600);
+    });
+  })();
+  </script>
+
+  <script type="module">
+  // If you're logged into the admin (same browser), save each generated
+  // delivery into the Deliveries table so it shows up in Studio OS.
+  import { supa } from "/admin/supa-config.js";
+  const $ = (id) => document.getElementById(id);
+  const fid = (u) => { const m = (u || "").match(/\/folders\/([a-zA-Z0-9_-]+)/); return m ? m[1] : ""; };
+  const vidId = (u) => { if (!u) return ""; u = u.trim(); const m = u.match(/\/d\/([a-zA-Z0-9_-]+)/) || u.match(/[?&]id=([a-zA-Z0-9_-]+)/); if (m) return m[1]; if (/^[a-zA-Z0-9_-]{10,}$/.test(u)) return u; return ""; };
+  const attr = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+
+  (async function () {
+    let session;
+    try { session = (await supa.auth.getSession()).data.session; } catch (e) { return; }
+    if (!session) return; // not logged in: link-only mode, nothing changes
+
+    let CL = [], PR = [], lastSaved = "";
+    const cRes = await supa.from("clients").select("id,name").order("name");
+    CL = cRes.data || [];
+    $("dl-clients").innerHTML = CL.map((c) => `<option value="${attr(c.name)}"></option>`).join("");
+    $("client-hint").style.display = "";
+    const pRes = await supa.from("projects").select("id,title,client_id").order("created_at", { ascending: false });
+    PR = pRes.data || [];
+    $("project-field").style.display = "";
+
+    const fillProjects = () => {
+      const nm = ($("f-client").value || "").trim().toLowerCase();
+      const cli = CL.find((c) => c.name.toLowerCase() === nm);
+      const opts = cli ? PR.filter((p) => p.client_id === cli.id) : [];
+      $("f-project").innerHTML = `<option value="">None</option>` + opts.map((p) => `<option value="${p.id}">${attr(p.title)}</option>`).join("");
+    };
+    $("f-client").addEventListener("input", fillProjects);
+    fillProjects();
+
+    // runs after the generator above has set the link + revealed the result
+    $("gen").addEventListener("click", async function () {
+      if ($("result").classList.contains("hidden")) return;
+      const link = $("out-link").value;
+      if (!link || link === lastSaved) return;
+      lastSaved = link;
+      const mv = $("f-video").value.trim();
+      const fol = fid(mv);
+      const vd = fol ? "" : vidId(mv);
+      const cname = $("f-client").value.trim();
+      let clientId = null;
+      if (cname) {
+        const cli = CL.find((c) => c.name.toLowerCase() === cname.toLowerCase());
+        if (cli) clientId = cli.id;
+        else {
+          const u = (await supa.auth.getUser()).data.user;
+          const ins = await supa.from("clients").insert({ name: cname, type: "artist", status: "active", created_by: u ? u.id : null }).select().single();
+          if (!ins.error) { clientId = ins.data.id; CL.push(ins.data); }
+        }
+      }
+      const date = $("f-date").value;
+      const res = await supa.from("deliveries").insert({
+        project_id: $("f-project").value || null,
+        client_id: clientId,
+        title: $("f-title").value.trim() || null,
+        delivery_link: link,
+        drive_folder_id: fol || null,
+        drive_video_id: vd || null,
+        portrait: $("f-portrait").checked,
+        delivered_at: date ? new Date(date).toISOString() : new Date().toISOString(),
+      });
+      $("saved-note").textContent = res.error ? ("Not saved to admin: " + res.error.message) : "Saved to your Deliveries tab in the admin.";
     });
   })();
   </script>

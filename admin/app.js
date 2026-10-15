@@ -1,12 +1,7 @@
 // ===========================================================
 // Go Jam Studio OS — admin console
 // ===========================================================
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-
-const SUPABASE_URL = "https://qkpnmoepnsmdkqgbfozz.supabase.co";
-// anon public key — safe in client code, protected by row-level security
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrcG5tb2VwbnNtZGtxZ2Jmb3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5OTkwMzgsImV4cCI6MjEwNzU3NTAzOH0.HPHpzocgvcplluMMafy9V3Zv0PSPkaGtrR1-rVjCgxg";
-const supa = createClient(SUPABASE_URL, SUPABASE_KEY);
+import { supa } from "./supa-config.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -345,14 +340,29 @@ async function loadDeliveries(projectId) {
   if (!rows.length) { box.innerHTML = `<div class="empty" style="padding:24px 20px"><p>No deliveries yet. Create a link to send your client.</p></div>`; return; }
   box.innerHTML = `<div class="rows">${rows.map(deliveryRow).join("")}</div>`;
   box.querySelectorAll("[data-copy]").forEach((b) => (b.onclick = async (e) => { e.preventDefault(); const ok = await copyText(b.dataset.copy); toast(ok ? "Link copied" : "Copy failed"); }));
+  box.querySelectorAll("[data-deldlv]").forEach((b) => (b.onclick = async () => {
+    if (!confirm("Delete this delivery record? The link stops being tracked here (it keeps working if already sent).")) return;
+    const res = await supa.from("deliveries").delete().eq("id", b.dataset.deldlv);
+    if (res.error) { toast(res.error.message); return; }
+    toast("Deleted"); loadDeliveries(projectId);
+  }));
 }
 function deliveryRow(d) {
   const when = String(d.delivered_at || d.created_at || "").slice(0, 10);
-  return `<div class="row"><div class="title">${esc(d.title || "Delivery")}</div><span class="date">${esc(when)}</span><div class="spacer"></div><a class="btn btn-ghost btn-sm" href="${escAttr(d.delivery_link)}" target="_blank" rel="noopener">Open</a><button class="btn btn-ghost btn-sm" data-copy="${escAttr(d.delivery_link)}">Copy</button></div>`;
+  return `<div class="row"><div class="title">${esc(d.title || "Delivery")}</div><span class="date">${esc(when)}</span><div class="spacer"></div><a class="btn btn-ghost btn-sm" href="${escAttr(d.delivery_link)}" target="_blank" rel="noopener">Open</a><button class="btn btn-ghost btn-sm" data-copy="${escAttr(d.delivery_link)}">Copy</button><button class="btn btn-danger btn-sm" data-deldlv="${d.id}">Delete</button></div>`;
 }
-function deliveryForm({ projectId, clientId, projectTitle, clientName, onDone }) {
+async function deliveryForm({ projectId, clientId, projectTitle, clientName, pickClient, onDone }) {
+  let projs = [];
+  if (pickClient) {
+    if (!CLIENTS.length) CLIENTS = (await supa.from("clients").select("*").order("name")).data || [];
+    projs = (await supa.from("projects").select("id,title,client_id").order("created_at", { ascending: false })).data || [];
+  }
+  const picker = pickClient ? `
+    <label class="fld"><span>Client</span><input id="d-client" list="d-client-dl" value="${escAttr(clientName || "")}" placeholder="Select or type a new client" autocomplete="off" /><datalist id="d-client-dl">${CLIENTS.map((c) => `<option value="${escAttr(c.name)}"></option>`).join("")}</datalist><div class="cli-hint" style="margin-top:6px">Pick from your list, or type a new name to create the client.</div></label>
+    <label class="fld"><span>Link to a project (optional)</span><select id="d-project"><option value="">None</option></select></label>` : "";
   modal(`<h3>New delivery</h3>
     <div class="bld-note-sm">In Google Drive, set the video and photos to "Anyone with the link, Viewer" first, or the client can't open them.</div>
+    ${picker}
     <label class="fld"><span>Title</span><input id="d-title" value="${escAttr(projectTitle || "")}" placeholder="e.g. 16 Bars Official Music Video" /></label>
     <label class="fld"><span>Video link, or project folder link</span><input id="d-video" placeholder="Drive video file link, or a folder link" /></label>
     <div class="cli-hint" style="margin:-8px 0 14px">One video: paste the file link. Multiple videos or photos: paste a folder link and we pull them all out.</div>
@@ -368,7 +378,31 @@ function deliveryForm({ projectId, clientId, projectTitle, clientName, onDone })
     <div class="actions"><div style="flex:1"></div><button class="btn btn-ghost" id="d-cancel">Cancel</button><button class="btn btn-primary" id="d-save">Create link</button></div>`);
   $("d-date").value = new Date().toISOString().slice(0, 10);
   $("d-cancel").onclick = closeModal;
+  if (pickClient) {
+    const fillProjects = () => {
+      const nm = val("d-client").toLowerCase();
+      const cli = CLIENTS.find((c) => c.name.toLowerCase() === nm);
+      const opts = cli ? projs.filter((p) => p.client_id === cli.id) : [];
+      $("d-project").innerHTML = `<option value="">None</option>` + opts.map((p) => `<option value="${p.id}">${esc(p.title)}</option>`).join("");
+    };
+    $("d-client").oninput = fillProjects;
+    $("d-project").onchange = () => { const p = projs.find((x) => x.id === $("d-project").value); if (p && !val("d-title")) $("d-title").value = p.title; };
+    fillProjects();
+  }
   $("d-save").onclick = async () => {
+    let cId = clientId, pId = projectId, cName = clientName;
+    if (pickClient) {
+      cName = val("d-client"); if (!cName) { toast("Pick or type a client"); return; }
+      const cli = CLIENTS.find((c) => c.name.toLowerCase() === cName.toLowerCase());
+      if (cli) cId = cli.id;
+      else {
+        const u = (await supa.auth.getUser()).data.user;
+        const ins = await supa.from("clients").insert({ name: cName, type: "artist", status: "active", created_by: u ? u.id : null }).select().single();
+        if (ins.error) { toast(ins.error.message); return; }
+        cId = ins.data.id; CLIENTS.push(ins.data);
+      }
+      pId = $("d-project").value || null;
+    }
     const mainVal = val("d-video");
     const fol = folderId(mainVal);
     const vid = fol ? "" : driveId(mainVal);
@@ -379,14 +413,14 @@ function deliveryForm({ projectId, clientId, projectTitle, clientName, onDone })
     if (!$("d-review").checked) data.noReview = true;
     if (!$("d-feedback").checked) data.noFeedback = true;
     if (!$("d-cta").checked) data.noCta = true;
-    if (clientName) data.client = clientName;
+    if (cName) data.client = cName;
     const title = val("d-title"); if (title) data.title = title;
     const date = val("d-date"); if (date) data.date = date;
     const note = val("d-note"); if (note) data.note = note;
     const pass = val("d-pass"); if (pass) data.pass = pass;
     const link = location.origin + "/deliver.html#" + b64encode(JSON.stringify(data));
     const res = await supa.from("deliveries").insert({
-      project_id: projectId, client_id: clientId, title: title || null,
+      project_id: pId, client_id: cId, title: title || null,
       delivery_link: link, drive_folder_id: fol || null, drive_video_id: vid || null,
       portrait: !!data.portrait, delivered_at: date ? new Date(date).toISOString() : new Date().toISOString(),
     });
@@ -483,18 +517,20 @@ function renderProjectsView() {
 /* ---------- deliveries tab (all deliveries) ---------- */
 async function viewDeliveries() {
   setActiveNav("deliveries");
-  setView(`<div class="view-head"><h2>Deliveries</h2></div><div id="dlv-all"><div class="empty">Loading...</div></div>`);
+  setView(`<div class="view-head"><h2>Deliveries</h2><div class="spacer"></div><button class="btn btn-primary" id="new-delivery-tab">New delivery</button></div><div id="dlv-all"><div class="empty">Loading...</div></div>`);
+  $("new-delivery-tab").onclick = () => deliveryForm({ pickClient: true, onDone: viewDeliveries });
   const box = $("dlv-all");
   const { data, error } = await supa.from("deliveries").select("*, clients(name), projects(title)").order("created_at", { ascending: false });
   if (error) { box.innerHTML = `<div class="empty"><div class="big">Couldn't load</div><p>${esc(error.message)}</p></div>`; return; }
   const rows = data || [];
-  if (!rows.length) { box.innerHTML = `<div class="empty"><div class="big">No deliveries yet</div><p>Open a project and hit "New delivery" to make a link. Every one you create is recorded here against the client. The standalone builder is still at <a href="/deliver-new.html" target="_blank" rel="noopener">/deliver-new.html</a>.</p></div>`; return; }
+  if (!rows.length) { box.innerHTML = `<div class="empty"><div class="big">No deliveries yet</div><p>Hit "New delivery" above, or make one from inside a project. Links built with the standalone <a href="/deliver-new.html" target="_blank" rel="noopener">builder</a> while you're logged in show up here too.</p></div>`; return; }
   box.innerHTML = `<div class="rows">${rows.map((d) => {
     const when = String(d.delivered_at || d.created_at || "").slice(0, 10);
     const sub = d.clients ? esc(d.clients.name) : "";
-    return `<div class="row" data-pid="${d.project_id || ""}"><div class="title">${esc(d.title || (d.projects ? d.projects.title : "Delivery"))}${sub ? `<div class="dlv-sub">${sub}</div>` : ""}</div><span class="date">${esc(when)}</span><div class="spacer"></div><a class="btn btn-ghost btn-sm" href="${escAttr(d.delivery_link)}" target="_blank" rel="noopener">Open</a><button class="btn btn-ghost btn-sm" data-copy="${escAttr(d.delivery_link)}">Copy</button></div>`;
+    return `<div class="row" data-pid="${d.project_id || ""}"><div class="title">${esc(d.title || (d.projects ? d.projects.title : "Delivery"))}${sub ? `<div class="dlv-sub">${sub}</div>` : ""}</div><span class="date">${esc(when)}</span><div class="spacer"></div><a class="btn btn-ghost btn-sm" href="${escAttr(d.delivery_link)}" target="_blank" rel="noopener">Open</a><button class="btn btn-ghost btn-sm" data-copy="${escAttr(d.delivery_link)}">Copy</button><button class="btn btn-danger btn-sm" data-deldlv="${d.id}">Delete</button></div>`;
   }).join("")}</div>`;
   box.querySelectorAll("[data-copy]").forEach((b) => (b.onclick = async (e) => { e.preventDefault(); e.stopPropagation(); const ok = await copyText(b.dataset.copy); toast(ok ? "Link copied" : "Copy failed"); }));
+  box.querySelectorAll("[data-deldlv]").forEach((b) => (b.onclick = async (e) => { e.stopPropagation(); if (!confirm("Delete this delivery record? The link stops being tracked here (it keeps working if already sent).")) return; const res = await supa.from("deliveries").delete().eq("id", b.dataset.deldlv); if (res.error) { toast(res.error.message); return; } toast("Deleted"); viewDeliveries(); }));
   box.querySelectorAll(".row").forEach((r) => { if (r.dataset.pid) { r.style.cursor = "pointer"; r.onclick = (e) => { if (e.target.closest("a,button")) return; location.hash = "#/projects/" + r.dataset.pid; }; } });
 }
 
