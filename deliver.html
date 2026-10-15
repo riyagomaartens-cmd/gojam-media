@@ -97,6 +97,10 @@
       return;
     }
 
+    // folder deliveries get the browsable folder view (handles nested subfolders)
+    var BROWSE = !!(data.folder && !data.videoId);
+    var FOLDER_MIME = "application/vnd.google-apps.folder";
+
     // --- password gate (light protection) ---
     var unlockedKey = "gojam-dl-" + raw.slice(0, 24);
     function reveal() { elGate.classList.add("hidden"); elPage.classList.remove("hidden"); prepareAndRender(); }
@@ -107,27 +111,9 @@
         "&key=" + encodeURIComponent(API_KEY) + "&fields=files(id,name,mimeType,videoMediaMetadata(width,height))&orderBy=name_natural&pageSize=500";
       return fetch(url).then(function (r) { return r.json(); });
     }
-    // If the link points at a whole folder, find the video + photos inside it, then render.
-    function prepareAndRender() {
-      if (data.videoId || (data.videos && data.videos.length)) { render(); return; }
-      if (data.folder) {
-        document.getElementById("content").innerHTML = '<p class="dl-meta" style="text-align:center;padding:70px 0;">Loading your delivery…</p>';
-        listFolder(data.folder).then(function (j) {
-          var files = (j && j.files) || [];
-          var vids = files.filter(function (f) { return /^video\//.test(f.mimeType || ""); });
-          var imgs = files.filter(function (f) { return /^image\//.test(f.mimeType || ""); });
-          if (!vids.length) { showError(); return; }
-          data.videos = vids.map(function (f) {
-            var m = f.videoMediaMetadata || {};
-            return { id: f.id, name: f.name, w: m.width, h: m.height };
-          });
-          if (imgs.length) { data.photos = imgs.map(function (f) { return f.id; }); data.photoFolder = data.folder; }
-          render();
-        }).catch(function () { showError(); });
-        return;
-      }
-      showError();
-    }
+    // Folder deliveries render the chrome, then the browser lists the folder live
+    // (so subfolders are browsable). Single-video deliveries render straight away.
+    function prepareAndRender() { render(); }
     if (data.pass) {
       var already = false;
       try { already = sessionStorage.getItem(unlockedKey) === "1"; } catch (e) {}
@@ -174,33 +160,19 @@
       html += '<p class="dl-meta">' + metaBits.join("  &nbsp;/&nbsp;  ") + '</p>';
       html += '</div>';
 
-      // open the whole folder in Drive (handy for raw footage / grabbing everything at once)
-      if (v.folder) {
-        html += '<div class="dl-folderbar"><a class="btn btn-ghost btn-sm" href="https://drive.google.com/drive/folders/' + encodeURIComponent(v.folder) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>Open the full folder in Drive</a></div>';
-      }
-
-      // videos — one player per video (a folder can hold several)
-      var videos = (v.videos && v.videos.length) ? v.videos : [{ id: v.videoId, portrait: v.portrait }];
-      var MAX_PLAYERS = 12;
-      var multiVid = videos.length > 1;
-      videos.slice(0, MAX_PLAYERS).forEach(function (vid) {
-        var isPortrait = (typeof vid.portrait === "boolean") ? vid.portrait
-          : (vid.h && vid.w) ? (vid.h > vid.w) : !!v.portrait;
-        var dl = "https://drive.google.com/uc?export=download&id=" + encodeURIComponent(vid.id);
-        var view = "https://drive.google.com/file/d/" + encodeURIComponent(vid.id) + "/view";
-        html += '<div class="dl-video-block">';
-        if (multiVid && vid.name) html += '<div class="dl-video-label">' + esc(cleanName(vid.name)) + '</div>';
-        html += '<div class="dl-video' + (isPortrait ? ' is-portrait' : '') + '">';
-        html += '<iframe src="https://drive.google.com/file/d/' + encodeURIComponent(vid.id) + '/preview" allow="autoplay; fullscreen" allowfullscreen title="' + esc(vid.name || v.title || "Project video") + '"></iframe>';
-        html += '</div>';
-        html += '<div class="dl-actions">';
-        html += '<a class="btn btn-primary" href="' + esc(dl) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M5 21h14" fill="none" stroke="#1a1206" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Download' + (multiVid ? '' : ' video') + '</a>';
-        html += '<a class="btn btn-ghost" href="' + esc(view) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M9 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Open in Drive</a>';
-        html += '</div>';
-        html += '</div>';
-      });
-      if (videos.length > MAX_PLAYERS) {
-        html += '<p class="dl-meta" style="margin-top:30px;">+ ' + (videos.length - MAX_PLAYERS) + ' more videos in the folder. Use "Open the full folder in Drive" above to view and download them all.</p>';
+      if (BROWSE) {
+        // browsable folder view — filled after render (subfolders, videos + photos)
+        html += '<div id="dl-browser" class="dl-browser"><p class="dl-meta" style="text-align:center;padding:50px 0;">Loading your files…</p></div>';
+      } else {
+        // single-video (or explicit list) delivery — one player per video
+        var videos = (v.videos && v.videos.length) ? v.videos : [{ id: v.videoId, portrait: v.portrait }];
+        var multiVid = videos.length > 1;
+        videos.slice(0, 12).forEach(function (vid) {
+          html += videoBlockHtml({ id: vid.id, name: vid.name, w: vid.w, h: vid.h, portrait: vid.portrait }, multiVid, v.portrait);
+        });
+        if (videos.length > 12) {
+          html += '<p class="dl-meta" style="margin-top:30px;">+ ' + (videos.length - 12) + ' more videos.</p>';
+        }
       }
 
       // note
@@ -209,7 +181,7 @@
       }
 
       // photos — a click-to-enlarge gallery (folder or individual links); filled after render
-      if ((v.photos && v.photos.length) || v.photoFolder) {
+      if (!BROWSE && ((v.photos && v.photos.length) || v.photoFolder)) {
         var folderUrl = v.photoFolder ? "https://drive.google.com/drive/folders/" + encodeURIComponent(v.photoFolder) : "";
         html += '<div class="dl-section-head dl-section-head--row"><h2>Photos</h2>';
         if (folderUrl) {
@@ -251,7 +223,84 @@
       html += '</footer>';
 
       document.getElementById("content").innerHTML = html;
-      setupPhotos(v);
+      if (BROWSE) renderBrowser(data.folder, [{ id: data.folder, name: (v.title ? v.title : "All files") }]);
+      else setupPhotos(v);
+    }
+
+    // ---------- one video player block (shared by single + folder views) ----------
+    function videoBlockHtml(vid, multi, fallbackPortrait) {
+      var isPortrait = (typeof vid.portrait === "boolean") ? vid.portrait
+        : (vid.h && vid.w) ? (vid.h > vid.w) : !!fallbackPortrait;
+      var dl = "https://drive.google.com/uc?export=download&id=" + encodeURIComponent(vid.id);
+      var view = "https://drive.google.com/file/d/" + encodeURIComponent(vid.id) + "/view";
+      var h = '<div class="dl-video-block">';
+      if (multi && vid.name) h += '<div class="dl-video-label">' + esc(cleanName(vid.name)) + '</div>';
+      h += '<div class="dl-video' + (isPortrait ? ' is-portrait' : '') + '">';
+      h += '<iframe src="https://drive.google.com/file/d/' + encodeURIComponent(vid.id) + '/preview" allow="autoplay; fullscreen" allowfullscreen title="' + esc(vid.name || "Project video") + '"></iframe>';
+      h += '</div>';
+      h += '<div class="dl-actions">';
+      h += '<a class="btn btn-primary" href="' + esc(dl) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M5 21h14" fill="none" stroke="#1a1206" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Download' + (multi ? '' : ' video') + '</a>';
+      h += '<a class="btn btn-ghost" href="' + esc(view) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M9 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Open in Drive</a>';
+      h += '</div></div>';
+      return h;
+    }
+
+    // ---------- folder browser (nested subfolders + media) ----------
+    function renderBrowser(folderId, crumbs) {
+      var area = document.getElementById("dl-browser");
+      if (!area) return;
+      area.innerHTML = '<p class="dl-meta" style="text-align:center;padding:50px 0;">Loading your files…</p>';
+      listFolder(folderId).then(function (j) {
+        if (!j || j.error) throw new Error("drive");
+        var files = (j && j.files) || [];
+        var folders = files.filter(function (f) { return (f.mimeType || "") === FOLDER_MIME; });
+        var vids = files.filter(function (f) { return /^video\//.test(f.mimeType || ""); });
+        var imgs = files.filter(function (f) { return /^image\//.test(f.mimeType || ""); });
+
+        var h = '<div class="dl-browser-bar">';
+        h += '<div class="dl-crumbs">';
+        crumbs.forEach(function (c, i) {
+          if (i > 0) h += '<span class="dl-crumb-sep">/</span>';
+          if (i < crumbs.length - 1) h += '<a href="#" class="dl-crumb" data-ci="' + i + '">' + esc(c.name) + '</a>';
+          else h += '<span class="dl-crumb dl-crumb-cur">' + esc(c.name) + '</span>';
+        });
+        h += '</div>';
+        h += '<a class="btn btn-ghost btn-sm" href="https://drive.google.com/drive/folders/' + encodeURIComponent(folderId) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M9 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Open in Drive</a>';
+        h += '</div>';
+
+        if (!folders.length && !vids.length && !imgs.length) {
+          h += '<p class="dl-meta" style="text-align:center;padding:40px 0;">This folder is empty.</p>';
+        }
+        if (folders.length) {
+          h += '<div class="dl-folders">';
+          folders.forEach(function (f) {
+            h += '<button class="dl-folder-tile" data-fid="' + esc(f.id) + '" data-fname="' + esc(f.name) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span>' + esc(f.name) + '</span></button>';
+          });
+          h += '</div>';
+        }
+        if (vids.length) {
+          var multi = vids.length > 1;
+          vids.slice(0, 12).forEach(function (f) {
+            var m = f.videoMediaMetadata || {};
+            h += videoBlockHtml({ id: f.id, name: f.name, w: m.width, h: m.height }, multi, data.portrait);
+          });
+          if (vids.length > 12) h += '<p class="dl-meta" style="margin-top:20px;">+ ' + (vids.length - 12) + ' more videos here. Use "Open in Drive" above to view them all.</p>';
+        }
+        if (imgs.length) {
+          h += '<div class="dl-section-head"><h2>Photos</h2></div><div id="photo-area"></div>';
+        }
+        area.innerHTML = h;
+
+        area.querySelectorAll(".dl-crumb[data-ci]").forEach(function (a) {
+          a.addEventListener("click", function (e) { e.preventDefault(); var ci = +a.getAttribute("data-ci"); renderBrowser(crumbs[ci].id, crumbs.slice(0, ci + 1)); });
+        });
+        area.querySelectorAll(".dl-folder-tile").forEach(function (b) {
+          b.addEventListener("click", function () { renderBrowser(b.getAttribute("data-fid"), crumbs.concat([{ id: b.getAttribute("data-fid"), name: b.getAttribute("data-fname") }])); });
+        });
+        if (imgs.length) renderGallery(document.getElementById("photo-area"), imgs.map(function (f) { return f.id; }));
+      }).catch(function () {
+        area.innerHTML = '<div class="dl-folder"><iframe src="https://drive.google.com/embeddedfolderview?id=' + encodeURIComponent(folderId) + '#grid" title="Project files"></iframe></div>';
+      });
     }
 
     // ---------- photos: enlargeable gallery + lightbox ----------
