@@ -201,9 +201,10 @@ label.fld span { display: block; font-size: 0.8rem; color: var(--muted); margin-
 .money-grid { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-bottom: 14px; }
 .money-grid .fld { margin-bottom: 0; min-width: 150px; flex: 1; }
 .money-grid .fld input { width: 100%; }
-.money-stat { min-width: 120px; }
-.money-stat .k { color: var(--muted-2); font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; }
-.money-stat .v { font-family: var(--font-display); font-weight: 400; font-size: 1.5rem; margin-top: 2px; }
+.money-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 4px 0 18px; }
+.money-stat { min-width: 110px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+.money-stat .k { color: var(--muted-2); font-size: 0.72rem; letter-spacing: 0.03em; text-transform: uppercase; }
+.money-stat .v { font-family: var(--font-display); font-weight: 400; font-size: 1.35rem; margin-top: 4px; }
 .doc-rows { display: flex; flex-direction: column; gap: 10px; }
 .doc-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; }
 .doc-label { font-size: 0.85rem; min-width: 70px; color: var(--muted); }

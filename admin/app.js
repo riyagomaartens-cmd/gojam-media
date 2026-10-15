@@ -33,6 +33,13 @@ const STAGE_COLOR = {
   closed: "#8c8c96",
 };
 const stColor = (s) => STAGE_COLOR[normSt(s)] || "#8c8c96";
+
+// money: amounts entered are VAT-inclusive; revenue (ex-VAT) splits 30/70 Ipic/Go Jam
+const VAT_RATE = 0.15;
+const IPIC_SHARE = 0.30;
+const GOJAM_SHARE = 0.70;
+const rand = (n) => (n == null ? "n/a" : "R " + Math.round(n).toLocaleString("en-ZA"));
+const exVat = (incl) => (incl == null ? null : incl / (1 + VAT_RATE));
 const stageBadge = (s) => { const c = stColor(s); return `<span class="badge" style="color:${c};border-color:${c}66">${esc(pLabel(s))}</span>`; };
 
 // default onboarding -> delivery checklist, seeded on every new project
@@ -149,11 +156,16 @@ async function viewDashboard() {
   const dueToday = leadDue.filter((f) => f.due_date === t).length;
 
   let invoiced = 0, totalMin = 0, haveFin = false;
-  const finRes = await supa.from("projects").select("amount_charged");
+  const finRes = await supa.from("projects").select("amount_charged,amount_paid");
   if (!finRes.error) { haveFin = true; (finRes.data || []).forEach((r) => (invoiced += Number(r.amount_charged) || 0)); }
   const tRes = await supa.from("time_entries").select("minutes");
   if (!tRes.error) (tRes.data || []).forEach((r) => (totalMin += Number(r.minutes) || 0));
-  const avgRate = (haveFin && invoiced > 0 && totalMin > 0) ? Math.round(invoiced / (totalMin / 60)) : null;
+  const avgRate = (haveFin && invoiced > 0 && totalMin > 0) ? (invoiced / (totalMin / 60)) : null;
+  // this-month revenue (needs paid_date / migrate-phase6)
+  let monthInv = 0, monthEx = 0, haveMonth = false;
+  const now = new Date(); const ym = now.getFullYear() + "-" + (now.getMonth() + 1 < 10 ? "0" : "") + (now.getMonth() + 1);
+  const monthRes = await supa.from("projects").select("amount_charged,amount_paid,paid_date");
+  if (!monthRes.error) { haveMonth = true; (monthRes.data || []).forEach((r) => { if (r.paid_date && String(r.paid_date).slice(0, 7) === ym) { monthInv += Number(r.amount_charged) || 0; monthEx += (Number(r.amount_paid) || 0) / (1 + VAT_RATE); } }); }
 
   let h = '<div class="dash-cards">';
   h += dashCard("#/clients", cCount("active"), "Active clients");
@@ -161,10 +173,19 @@ async function viewDashboard() {
   h += dashCard("#/projects", inProd, "In production");
   h += dashCard("#/projects", stageCount("delivered"), "Delivered");
   if (haveFin) {
-    h += dashCard("#/projects", "R " + Math.round(invoiced), "Invoiced");
-    h += dashCard("#/projects", avgRate != null ? "R " + avgRate : "n/a", "Avg / hour");
+    h += dashCard("#/projects", rand(invoiced), "Invoiced (all)");
+    h += dashCard("#/projects", avgRate != null ? rand(avgRate) : "n/a", "Avg / hour");
   }
   h += '</div>';
+
+  if (haveMonth) {
+    const monthName = now.toLocaleDateString("en-ZA", { month: "long" });
+    h += `<div class="section-title">This month (${esc(monthName)})</div><div class="dash-cards">
+      ${dashCard("#/projects", rand(monthInv), "Invoiced")}
+      ${dashCard("#/projects", rand(monthEx * GOJAM_SHARE), "Go Jam 70%")}
+      ${dashCard("#/projects", rand(monthEx * IPIC_SHARE), "Ipic 30%")}
+    </div>`;
+  }
 
   h += '<div class="section-title">Pipeline</div><div class="dash-pipe">';
   PSTATUS.forEach(([v, l]) => { const c = STAGE_COLOR[v]; h += `<a class="dash-stage" href="#/projects" style="border-color:${c}55"><span class="ds-n" style="color:${c}">${stageCount(v)}</span><span class="ds-l">${esc(l)}</span></a>`; });
@@ -437,17 +458,29 @@ function renderMoney(projectId, p, loggedMin) {
   const box = $("money-wrap"); if (!box) return;
   const hrs = loggedMin / 60;
   const rate = (p.amount_charged != null && hrs > 0) ? (p.amount_charged / hrs) : null;
+  const paidEx = exVat(p.amount_paid);
+  const vat = (p.amount_paid != null && paidEx != null) ? (p.amount_paid - paidEx) : null;
+  const hasPaidDate = ("paid_date" in p); // false until migrate-phase6 is run
   box.innerHTML = `
     <div class="money-grid">
-      <label class="fld"><span>Amount charged (R)</span><input id="m-charged" type="number" step="0.01" inputmode="decimal" value="${p.amount_charged != null ? escAttr(p.amount_charged) : ""}" /></label>
-      <label class="fld"><span>Amount paid (R)</span><input id="m-paid" type="number" step="0.01" inputmode="decimal" value="${p.amount_paid != null ? escAttr(p.amount_paid) : ""}" /></label>
-      <div class="money-stat"><div class="k">Rate / hour</div><div class="v">${rate != null ? "R " + Math.round(rate) : "n/a"}</div></div>
+      <label class="fld"><span>Amount charged (R, incl VAT)</span><input id="m-charged" type="number" step="0.01" inputmode="decimal" value="${p.amount_charged != null ? escAttr(p.amount_charged) : ""}" /></label>
+      <label class="fld"><span>Amount paid (R, incl VAT)</span><input id="m-paid" type="number" step="0.01" inputmode="decimal" value="${p.amount_paid != null ? escAttr(p.amount_paid) : ""}" /></label>
+      ${hasPaidDate ? `<label class="fld"><span>Paid on</span><input id="m-paiddate" type="date" value="${escAttr(p.paid_date || "")}" /></label>` : ""}
       <button class="btn btn-primary btn-sm" id="m-save">Save</button>
+    </div>
+    <div class="money-stats">
+      <div class="money-stat"><div class="k">Paid ex-VAT</div><div class="v">${rand(paidEx)}</div></div>
+      <div class="money-stat"><div class="k">VAT (15%)</div><div class="v">${rand(vat)}</div></div>
+      <div class="money-stat"><div class="k">Go Jam 70%</div><div class="v">${rand(paidEx != null ? paidEx * GOJAM_SHARE : null)}</div></div>
+      <div class="money-stat"><div class="k">Ipic 30%</div><div class="v">${rand(paidEx != null ? paidEx * IPIC_SHARE : null)}</div></div>
+      <div class="money-stat"><div class="k">Rate / hour</div><div class="v">${rate != null ? rand(rate) : "n/a"}</div></div>
     </div>
     <div class="doc-rows">${docRow("quote", "Quote", p)}${docRow("invoice", "Invoice", p)}</div>`;
   $("m-save").onclick = async () => {
     const charged = val("m-charged"), paid = val("m-paid");
-    const res = await supa.from("projects").update({ amount_charged: charged === "" ? null : Number(charged), amount_paid: paid === "" ? null : Number(paid), updated_at: new Date().toISOString() }).eq("id", projectId);
+    const upd = { amount_charged: charged === "" ? null : Number(charged), amount_paid: paid === "" ? null : Number(paid), updated_at: new Date().toISOString() };
+    if (hasPaidDate) { const pd = val("m-paiddate"); upd.paid_date = pd || (paid !== "" ? isoDate(today0()) : null); }
+    const res = await supa.from("projects").update(upd).eq("id", projectId);
     if (res.error) { toast(res.error.message); return; }
     toast("Saved"); viewProject(projectId);
   };
