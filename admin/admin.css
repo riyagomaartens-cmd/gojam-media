@@ -60,7 +60,11 @@ label.fld span { display: block; font-size: 0.8rem; color: var(--muted); margin-
 
 /* ---------- app shell ---------- */
 .topbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 24px; padding: 0 24px; height: 62px; background: rgba(10,10,11,0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
-.topbar .brand img { height: 30px; mix-blend-mode: screen; }
+.topbar .brand { display: inline-flex; align-items: center; padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px; transition: border-color 0.15s var(--ease), transform 0.15s var(--ease); }
+.topbar .brand:hover { border-color: var(--accent-1); transform: translateY(-1px); }
+.topbar .brand.active { border-color: var(--accent-1); box-shadow: 0 0 0 1px rgba(240,181,68,0.4) inset; }
+.topbar .brand img { height: 26px; mix-blend-mode: screen; }
+.topbar nav a.nav-dash { font-family: var(--font-display); letter-spacing: 0.03em; }
 .topbar nav { display: flex; gap: 4px; margin-left: 8px; }
 .topbar nav a { color: var(--muted); font-size: 0.9rem; padding: 7px 14px; border-radius: 999px; }
 .topbar nav a:hover { color: var(--text); }
@@ -83,7 +87,7 @@ label.fld span { display: block; font-size: 0.8rem; color: var(--muted); margin-
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; cursor: pointer; transition: border-color 0.15s var(--ease), transform 0.15s var(--ease); }
 .card:hover { border-color: #3a3a44; transform: translateY(-2px); }
-.card h3 { font-size: 1.05rem; margin-bottom: 4px; }
+.card h3 { font-family: var(--font-display); font-weight: 400; letter-spacing: 0.02em; font-size: 1.15rem; margin-bottom: 5px; }
 .card .sub { color: var(--muted); font-size: 0.82rem; }
 .card .meta { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
 
@@ -186,6 +190,23 @@ label.fld span { display: block; font-size: 0.8rem; color: var(--muted); margin-
 .dash-stage .ds-n { display: block; font-family: var(--font-display); font-size: 1.5rem; line-height: 1; }
 .dash-stage .ds-l { display: block; color: var(--muted-2); font-size: 0.72rem; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
 
+/* ---------- Priority GO ---------- */
+.pr-eyebrow { font-family: var(--font-display); font-weight: 400; font-size: 1.9rem; letter-spacing: 0.03em; background: var(--accent-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.pr-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 26px; }
+.pr-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 10px; min-height: 180px; }
+.pr-card .pr-rank { font-family: var(--font-display); font-weight: 400; font-size: 2.4rem; line-height: 1; background: var(--accent-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.pr-card .pr-title { font-size: 1rem; flex: 1; }
+.pr-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pr-due { font-size: 0.74rem; color: var(--muted-2); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.pr-due.pr-soon { color: var(--accent-1); border-color: rgba(240,181,68,0.5); }
+.pr-due.pr-over { color: var(--red); border-color: rgba(229,115,122,0.5); }
+.pr-link { font-family: inherit; font-size: 0.74rem; color: var(--blue); background: transparent; border: 1px solid rgba(110,168,216,0.4); border-radius: 999px; padding: 2px 9px; cursor: pointer; white-space: nowrap; }
+.pr-link:hover { border-color: var(--blue); }
+.pr-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.pr-actions .btn { padding: 5px 11px; font-size: 0.76rem; }
+.pr-actions .btn[disabled] { opacity: 0.35; pointer-events: none; }
+.row .pr-due, .row .pr-link { vertical-align: middle; margin-left: 6px; }
+
 /* ---------- onboarding ---------- */
 .ob-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
 .ob-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 18px; font-size: 0.85rem; color: var(--muted); }
@@ -196,7 +217,7 @@ label.fld span { display: block; font-size: 0.8rem; color: var(--muted); margin-
 .ob-stat.bad .n { color: var(--red); }
 .ob-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
 .ob-card-top { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
-.ob-card-top h3 { font-size: 1.1rem; margin-bottom: 6px; }
+.ob-card-top h3 { font-family: var(--font-display); font-weight: 400; letter-spacing: 0.02em; font-size: 1.25rem; margin-bottom: 6px; }
 .ob-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ob-since { color: var(--muted-2); font-size: 0.8rem; }
 .badge.src { color: var(--accent-1); border-color: rgba(240,181,68,0.4); }

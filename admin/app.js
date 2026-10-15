@@ -54,7 +54,10 @@ const escAttr = (s) => esc(s).replace(/"/g, "&quot;");
 const cap = (s) => { s = String(s || ""); return s.charAt(0).toUpperCase() + s.slice(1); };
 const val = (id) => { const e = $(id); return e ? e.value.trim() : ""; };
 const setView = (html) => { $("view").innerHTML = html; window.scrollTo(0, 0); };
-const setActiveNav = (name) => document.querySelectorAll("#nav a").forEach((a) => a.classList.toggle("active", a.dataset.nav === name));
+const setActiveNav = (name) => {
+  document.querySelectorAll("#nav a").forEach((a) => a.classList.toggle("active", a.dataset.nav === name));
+  const brand = document.querySelector(".brand"); if (brand) brand.classList.toggle("active", name === "priority");
+};
 const modal = (html) => { $("modal-root").innerHTML = `<div class="modal-bg" id="modal-bg"><div class="modal">${html}</div></div>`; $("modal-bg").onclick = (e) => { if (e.target.id === "modal-bg") closeModal(); }; };
 const closeModal = () => { $("modal-root").innerHTML = ""; };
 let toastT;
@@ -118,6 +121,7 @@ function router() {
   if (top === "projects") return viewProjects();
   if (top === "onboarding") return viewOnboarding();
   if (top === "deliveries") return viewDeliveries();
+  if (top === "priority") return viewPriority();
   if (top === "clients") return viewClients();
   return viewDashboard();
 }
@@ -375,30 +379,38 @@ async function viewProject(id) {
   };
   const primaryId = p.client_id || (cl[0] && cl[0].id) || null;
   const primaryName = (cl[0] && cl[0].name) || "";
-  $("add-delivery").onclick = () => deliveryForm({ projectId: id, clientId: primaryId, projectTitle: p.title, clientName: primaryName, onDone: () => loadDeliveries(id) });
+  $("add-delivery").onclick = () => deliveryForm({ projectId: id, clientId: primaryId, projectTitle: p.title, clientName: primaryName, onDone: () => loadDeliveries(id, primaryName) });
   renderChecklist(id, steps, done, pct);
-  loadDeliveries(id);
+  loadDeliveries(id, primaryName);
 }
 
 /* ---------- deliveries on a project ---------- */
-async function loadDeliveries(projectId) {
+async function loadDeliveries(projectId, clientName) {
   const box = $("dlv-list"); if (!box) return;
   const { data, error } = await supa.from("deliveries").select("*").eq("project_id", projectId).order("created_at", { ascending: false });
   if (error) { box.innerHTML = `<div class="empty" style="padding:20px"><p>${esc(error.message)}</p></div>`; return; }
   const rows = data || [];
   if (!rows.length) { box.innerHTML = `<div class="empty" style="padding:24px 20px"><p>No deliveries yet. Create a link to send your client.</p></div>`; return; }
-  box.innerHTML = `<div class="rows">${rows.map(deliveryRow).join("")}</div>`;
-  box.querySelectorAll("[data-copy]").forEach((b) => (b.onclick = async (e) => { e.preventDefault(); const ok = await copyText(b.dataset.copy); toast(ok ? "Link copied" : "Copy failed"); }));
-  box.querySelectorAll("[data-deldlv]").forEach((b) => (b.onclick = async () => {
+  box.innerHTML = `<div class="rows">${rows.map((d) => deliveryRow(d, clientName)).join("")}</div>`;
+  wireDeliveryButtons(box, () => loadDeliveries(projectId, clientName));
+}
+function deliveryRow(d, clientName) {
+  const when = String(d.delivered_at || d.created_at || "").slice(0, 10);
+  return `<div class="row"><div class="title">${esc(d.title || "Delivery")}</div><span class="date">${esc(when)}</span><div class="spacer"></div>${deliveryBtns(d, clientName)}</div>`;
+}
+function deliveryBtns(d, clientName) {
+  return `<a class="btn btn-ghost btn-sm" href="${escAttr(d.delivery_link)}" target="_blank" rel="noopener">Open</a><button class="btn btn-primary btn-sm" data-copymsg data-link="${escAttr(d.delivery_link)}" data-title="${escAttr(d.title || "")}" data-client="${escAttr(clientName || "")}">Message</button><button class="btn btn-ghost btn-sm" data-copy="${escAttr(d.delivery_link)}">Link</button><button class="btn btn-danger btn-sm" data-deldlv="${d.id}">Delete</button>`;
+}
+function wireDeliveryButtons(box, reload) {
+  box.querySelectorAll("[data-copy]").forEach((b) => (b.onclick = async (e) => { e.preventDefault(); e.stopPropagation(); const ok = await copyText(b.dataset.copy); toast(ok ? "Link copied" : "Copy failed"); }));
+  box.querySelectorAll("[data-copymsg]").forEach((b) => (b.onclick = async (e) => { e.preventDefault(); e.stopPropagation(); const ok = await copyText(deliveryMessage(b.dataset.client, b.dataset.title, b.dataset.link)); toast(ok ? "Message copied, ready to send" : "Copy failed"); }));
+  box.querySelectorAll("[data-deldlv]").forEach((b) => (b.onclick = async (e) => {
+    e.stopPropagation();
     if (!confirm("Delete this delivery record? The link stops being tracked here (it keeps working if already sent).")) return;
     const res = await supa.from("deliveries").delete().eq("id", b.dataset.deldlv);
     if (res.error) { toast(res.error.message); return; }
-    toast("Deleted"); loadDeliveries(projectId);
+    toast("Deleted"); reload();
   }));
-}
-function deliveryRow(d) {
-  const when = String(d.delivered_at || d.created_at || "").slice(0, 10);
-  return `<div class="row"><div class="title">${esc(d.title || "Delivery")}</div><span class="date">${esc(when)}</span><div class="spacer"></div><a class="btn btn-ghost btn-sm" href="${escAttr(d.delivery_link)}" target="_blank" rel="noopener">Open</a><button class="btn btn-ghost btn-sm" data-copy="${escAttr(d.delivery_link)}">Copy</button><button class="btn btn-danger btn-sm" data-deldlv="${d.id}">Delete</button></div>`;
 }
 async function deliveryForm({ projectId, clientId, projectTitle, clientName, pickClient, onDone }) {
   let projs = [];
@@ -474,8 +486,8 @@ async function deliveryForm({ projectId, clientId, projectTitle, clientName, pic
       portrait: !!data.portrait, delivered_at: date ? new Date(date).toISOString() : new Date().toISOString(),
     });
     if (res.error) { toast(res.error.message); return; }
-    const copied = await copyText(link);
-    closeModal(); toast(copied ? "Link created and copied" : "Delivery link created");
+    const copied = await copyText(deliveryMessage(cName, title, link));
+    closeModal(); toast(copied ? "Delivery message copied, ready to send" : "Delivery created");
     if (onDone) onDone();
   };
 }
@@ -568,14 +580,20 @@ const SOURCES = [["whatsapp", "WhatsApp"], ["instagram", "Instagram"], ["email",
 const srcLabel = (s) => (SOURCES.find((x) => x[0] === s) || [s, s || "Other"])[1];
 const today0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
 const isoDate = (d) => { const p = (n) => (n < 10 ? "0" + n : "" + n); return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); };
+const SIGN_OFF = "\n\nKind regards,\nRiyago\nGo Jam Media 🎥";
 function followupPlan(name) {
   const n = (name || "there").trim();
   return [
-    { label: "Day 1", offset: 1, msg: "Hey " + n + ", thanks so much for reaching out to Go Jam. We're genuinely excited about what you've got in mind. When's a good time for a quick call to run through the vision and sort you a quote? We're ready to go whenever you are." },
-    { label: "Day 3", offset: 3, msg: "Hey " + n + ", just circling back on your project. Still keen to help you bring this one to life. Happy to jump on a quick call or answer anything right here. Whenever you're ready, so are we." },
-    { label: "Day 7", offset: 7, msg: "Hi " + n + ", checking in one more time. We've got space opening up soon and would love to lock your project in. Let me know if you want to move forward and we'll get the ball rolling." },
-    { label: "Day 14", offset: 14, msg: "Hey " + n + ", last nudge from us, no pressure at all. If the timing isn't right just yet, we're always ready to go when it is. Reach out whenever and we'll pick it straight up." },
+    { label: "Day 1", offset: 1, msg: "Hey " + n + "! 👋 Thanks so much for reaching out to Go Jam. 🙌 We're genuinely excited about what you've got in mind. When's a good time for a quick call to run through the vision and sort you a quote? We're always ready to go whenever you are. 🎬" + SIGN_OFF },
+    { label: "Day 3", offset: 3, msg: "Hey " + n + "! 😊 Just circling back on your project. Still keen to help you bring this one to life. ✨ Happy to jump on a quick call or answer anything right here. Whenever you're ready, so are we. 🎥" + SIGN_OFF },
+    { label: "Day 7", offset: 7, msg: "Hi " + n + "! 🙏 Checking in one more time. We've got some space opening up soon and would love to lock your project in. 📅 Let me know if you want to move forward and we'll get the ball rolling. 🚀" + SIGN_OFF },
+    { label: "Day 14", offset: 14, msg: "Hey " + n + "! 💛 Last nudge from us, no pressure at all. If the timing isn't right just yet, we're always ready to go when it is. Reach out whenever and we'll pick it straight up. 🎬" + SIGN_OFF },
   ];
+}
+function deliveryMessage(clientName, title, link) {
+  const who = (clientName || "").trim() || "there";
+  const proj = title ? ' "' + title + '"' : "";
+  return "Hey " + who + "! 🎬✨\n\nYour project" + proj + " is ready and we could not be happier with how it turned out! 🙌 Watch it, download it and grab everything right here:\n\n" + link + "\n\nThank you so much for trusting Go Jam with this one, it genuinely means the world to us. 💛 If you love what you see, a quick Google review helps other artists and brands find us. ⭐" + SIGN_OFF;
 }
 
 let LEADS = [], FUPS = {};
@@ -697,6 +715,122 @@ function enquiryForm() {
   };
 }
 
+/* ---------- Priority GO (opened from the logo) ---------- */
+let PRIO = [];
+function dueClass(d) {
+  if (!d) return "";
+  const t = isoDate(today0());
+  if (d < t) return "pr-over";
+  const diff = (new Date(d + "T00:00:00") - new Date(t + "T00:00:00")) / 86400000;
+  return diff <= 2 ? "pr-soon" : "";
+}
+async function viewPriority() {
+  setActiveNav("priority");
+  setView(`<div class="view-head"><div class="pr-eyebrow">Priority GO</div><div class="spacer"></div><button class="btn btn-primary" id="pr-add">New item</button></div>
+    <div id="pr-wrap"><div class="empty">Loading...</div></div>`);
+  $("pr-add").onclick = () => priorityForm();
+  const { data, error } = await supa.from("priority_items").select("*").eq("done", false).order("rank", { ascending: true }).order("created_at", { ascending: true });
+  const wrap = $("pr-wrap");
+  if (error) { wrap.innerHTML = `<div class="empty"><div class="big">Couldn't load</div><p>${esc(error.message)}</p><p style="margin-top:8px">If this is the first time, run migrate-phase4.sql in Supabase.</p></div>`; return; }
+  PRIO = data || [];
+  renderPriority();
+}
+function renderPriority() {
+  const wrap = $("pr-wrap");
+  if (!PRIO.length) { wrap.innerHTML = `<div class="empty"><div class="big">Nothing on the list</div><p>Add your top priorities. Link them to a project, client or enquiry, or just write a quick to-do.</p></div>`; return; }
+  const top = PRIO.slice(0, 5), rest = PRIO.slice(5);
+  let h = `<div class="pr-top">${top.map((it, i) => prioCard(it, i)).join("")}</div>`;
+  if (rest.length) h += `<div class="section-title">Also on the list</div><div class="rows">${rest.map((it, i) => prioRow(it, i + 5)).join("")}</div>`;
+  wrap.innerHTML = h;
+  wirePriority(wrap);
+}
+function prioLinkChip(it) {
+  return it.link_type ? `<button class="pr-link" data-golink="${esc(it.link_type)}:${esc(it.link_id || "")}">${esc(cap(it.link_type))}: ${esc(it.link_label || "")}</button>` : "";
+}
+function prioDue(it) {
+  return it.due_date ? `<span class="pr-due ${dueClass(it.due_date)}">Due ${esc(it.due_date)}</span>` : "";
+}
+function prioActions(it, idx) {
+  return `<div class="pr-actions"><button class="btn btn-primary btn-sm" data-done="${it.id}">Done</button><button class="btn btn-ghost btn-sm" data-up="${idx}" ${idx === 0 ? "disabled" : ""}>Up</button><button class="btn btn-ghost btn-sm" data-down="${idx}" ${idx === PRIO.length - 1 ? "disabled" : ""}>Down</button><button class="btn btn-ghost btn-sm" data-edit="${it.id}">Edit</button><button class="btn btn-danger btn-sm" data-del="${it.id}">Delete</button></div>`;
+}
+function prioCard(it, idx) {
+  return `<div class="pr-card"><div class="pr-rank">${idx + 1}</div><div class="pr-title">${esc(it.title)}</div><div class="pr-meta">${prioDue(it)}${prioLinkChip(it)}</div>${prioActions(it, idx)}</div>`;
+}
+function prioRow(it, idx) {
+  return `<div class="row"><div class="title">${esc(it.title)} ${prioDue(it)} ${prioLinkChip(it)}</div><div class="spacer"></div>${prioActions(it, idx)}</div>`;
+}
+function wirePriority(wrap) {
+  wrap.querySelectorAll("[data-done]").forEach((b) => (b.onclick = async () => {
+    const res = await supa.from("priority_items").update({ done: true, done_at: new Date().toISOString() }).eq("id", b.dataset.done);
+    if (res.error) { toast(res.error.message); return; }
+    toast("Done"); viewPriority();
+  }));
+  wrap.querySelectorAll("[data-up]").forEach((b) => (b.onclick = () => moveItem(+b.dataset.up, -1)));
+  wrap.querySelectorAll("[data-down]").forEach((b) => (b.onclick = () => moveItem(+b.dataset.down, 1)));
+  wrap.querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => { const it = PRIO.find((x) => x.id === b.dataset.edit); if (it) priorityForm(it); }));
+  wrap.querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => {
+    if (!confirm("Remove this item?")) return;
+    const res = await supa.from("priority_items").delete().eq("id", b.dataset.del);
+    if (res.error) { toast(res.error.message); return; }
+    toast("Removed"); viewPriority();
+  }));
+  wrap.querySelectorAll("[data-golink]").forEach((b) => (b.onclick = () => {
+    const [lt, lid] = b.dataset.golink.split(":");
+    if (lt === "project" && lid) location.hash = "#/projects/" + lid;
+    else if (lt === "client" && lid) location.hash = "#/clients/" + lid;
+    else location.hash = "#/onboarding";
+  }));
+}
+async function moveItem(idx, dir) {
+  const j = idx + dir;
+  if (j < 0 || j >= PRIO.length) return;
+  const arr = PRIO.slice();
+  const tmp = arr[idx]; arr[idx] = arr[j]; arr[j] = tmp;
+  PRIO = arr;
+  renderPriority();
+  const updates = arr.map((it, i) => (it.rank !== i ? supa.from("priority_items").update({ rank: i }).eq("id", it.id) : null)).filter(Boolean);
+  arr.forEach((it, i) => (it.rank = i));
+  await Promise.all(updates);
+}
+async function priorityForm(item) {
+  const it = item || {};
+  modal(`<h3>${item ? "Edit item" : "New priority"}</h3>
+    <label class="fld"><span>What needs doing?</span><input id="pi-title" value="${escAttr(it.title || "")}" placeholder="e.g. Send Beezlo Boys the final cut" /></label>
+    <label class="fld"><span>Link to (optional)</span><select id="pi-ltype"><option value="">Nothing</option><option value="project">Project</option><option value="client">Client</option><option value="enquiry">Enquiry</option></select></label>
+    <label class="fld" id="pi-lwrap" style="display:none"><span>Which one?</span><select id="pi-lid"></select></label>
+    <label class="fld"><span>Due date (optional)</span><input type="date" id="pi-due" value="${escAttr(it.due_date || "")}" /></label>
+    <div class="actions">${item ? `<button class="btn btn-danger btn-sm" id="pi-del">Delete</button>` : ""}<div style="flex:1"></div><button class="btn btn-ghost" id="pi-cancel">Cancel</button><button class="btn btn-primary" id="pi-save">Save</button></div>`);
+  $("pi-cancel").onclick = closeModal;
+  const loadOptions = async (type, selId) => {
+    let rows = [];
+    if (type === "project") rows = ((await supa.from("projects").select("id,title").order("created_at", { ascending: false })).data || []).map((r) => [r.id, r.title]);
+    else if (type === "client") rows = ((await supa.from("clients").select("id,name").order("name")).data || []).map((r) => [r.id, r.name]);
+    else if (type === "enquiry") rows = ((await supa.from("clients").select("id,name").eq("status", "lead").order("name")).data || []).map((r) => [r.id, r.name]);
+    $("pi-lid").innerHTML = rows.map(([v, l]) => `<option value="${escAttr(v)}" ${selId === v ? "selected" : ""}>${esc(l)}</option>`).join("") || `<option value="">None found</option>`;
+  };
+  $("pi-ltype").onchange = async () => {
+    const t = $("pi-ltype").value;
+    $("pi-lwrap").style.display = t ? "block" : "none";
+    if (t) await loadOptions(t);
+  };
+  if (it.link_type) { $("pi-ltype").value = it.link_type; $("pi-lwrap").style.display = "block"; await loadOptions(it.link_type, it.link_id); }
+  $("pi-save").onclick = async () => {
+    const title = val("pi-title"); if (!title) { toast("Add a title"); return; }
+    const lt = $("pi-ltype").value;
+    const payload = { title, due_date: val("pi-due") || null, link_type: lt || null, link_id: lt ? ($("pi-lid").value || null) : null, link_label: lt ? ($("pi-lid").options[$("pi-lid").selectedIndex] || {}).text || null : null };
+    let res;
+    if (item) res = await supa.from("priority_items").update(payload).eq("id", item.id);
+    else res = await supa.from("priority_items").insert({ ...payload, rank: PRIO.length });
+    if (res.error) { toast(res.error.message); return; }
+    closeModal(); toast("Saved"); viewPriority();
+  };
+  if (item) $("pi-del").onclick = async () => {
+    const res = await supa.from("priority_items").delete().eq("id", item.id);
+    if (res.error) { toast(res.error.message); return; }
+    closeModal(); toast("Removed"); viewPriority();
+  };
+}
+
 /* ---------- deliveries tab (all deliveries) ---------- */
 async function viewDeliveries() {
   setActiveNav("deliveries");
@@ -709,11 +843,10 @@ async function viewDeliveries() {
   if (!rows.length) { box.innerHTML = `<div class="empty"><div class="big">No deliveries yet</div><p>Hit "New delivery" above, or make one from inside a project. Links built with the standalone <a href="/deliver-new.html" target="_blank" rel="noopener">builder</a> while you're logged in show up here too.</p></div>`; return; }
   box.innerHTML = `<div class="rows">${rows.map((d) => {
     const when = String(d.delivered_at || d.created_at || "").slice(0, 10);
-    const sub = d.clients ? esc(d.clients.name) : "";
-    return `<div class="row" data-pid="${d.project_id || ""}"><div class="title">${esc(d.title || (d.projects ? d.projects.title : "Delivery"))}${sub ? `<div class="dlv-sub">${sub}</div>` : ""}</div><span class="date">${esc(when)}</span><div class="spacer"></div><a class="btn btn-ghost btn-sm" href="${escAttr(d.delivery_link)}" target="_blank" rel="noopener">Open</a><button class="btn btn-ghost btn-sm" data-copy="${escAttr(d.delivery_link)}">Copy</button><button class="btn btn-danger btn-sm" data-deldlv="${d.id}">Delete</button></div>`;
+    const name = d.clients ? d.clients.name : "";
+    return `<div class="row" data-pid="${d.project_id || ""}"><div class="title">${esc(d.title || (d.projects ? d.projects.title : "Delivery"))}${name ? `<div class="dlv-sub">${esc(name)}</div>` : ""}</div><span class="date">${esc(when)}</span><div class="spacer"></div>${deliveryBtns(d, name)}</div>`;
   }).join("")}</div>`;
-  box.querySelectorAll("[data-copy]").forEach((b) => (b.onclick = async (e) => { e.preventDefault(); e.stopPropagation(); const ok = await copyText(b.dataset.copy); toast(ok ? "Link copied" : "Copy failed"); }));
-  box.querySelectorAll("[data-deldlv]").forEach((b) => (b.onclick = async (e) => { e.stopPropagation(); if (!confirm("Delete this delivery record? The link stops being tracked here (it keeps working if already sent).")) return; const res = await supa.from("deliveries").delete().eq("id", b.dataset.deldlv); if (res.error) { toast(res.error.message); return; } toast("Deleted"); viewDeliveries(); }));
+  wireDeliveryButtons(box, viewDeliveries);
   box.querySelectorAll(".row").forEach((r) => { if (r.dataset.pid) { r.style.cursor = "pointer"; r.onclick = (e) => { if (e.target.closest("a,button")) return; location.hash = "#/projects/" + r.dataset.pid; }; } });
 }
 
